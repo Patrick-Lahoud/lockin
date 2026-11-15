@@ -212,8 +212,8 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 # ---------------------------------------------------------------- rate limits (per IP)
 # GET /state is polled constantly and stays unlimited. Changes are limited:
 RATE_LIMITS = {
-    "/lock": (12, 60),       # 12 per minute
-    "/unlock": (12, 60),
+    "/lock": (30, 60),       # 30 per minute
+    # /unlock is NOT limited: opening the box is the safe direction and must never be refused.
     "/settings": (10, 60),
     "/reset": (5, 60),
     "/inbox": (180, 60),     # the phone in the box can burst notifications
@@ -233,6 +233,8 @@ async def guard_requests(request: Request, call_next):
         if length > MAX_BODY_BYTES:
             return JSONResponse({"detail": "Request too large"}, status_code=413)
         path = request.url.path
+        if path == "/unlock":
+            return await call_next(request)  # never rate-limit opening the box
         limit, window = RATE_LIMITS.get(path, RATE_LIMITS["*"])
         bucket = path if path in RATE_LIMITS else "*"
         key = (request.client.host if request.client else "?", bucket)
@@ -300,6 +302,7 @@ async def post_lock(request: Request):
             ends_at=t + max(5, int(round(minutes * 60))),
             minutes=minutes,
             session_id=state["session_id"] + 1,
+            exits_left=state["max_exits"],  # exits are per session: every new lock starts full
             last_message=None,
             urgent_pending=False,
             last_digest=None,
@@ -323,9 +326,9 @@ async def post_unlock(request: Request):
         if reason == "timer" and now() < (state["ends_at"] or 0):
             raise HTTPException(403, "Timer is still running")
         if reason == "emergency":
-            if state["exits_left"] <= 0:
-                raise HTTPException(403, "No emergency exits left")
-            state["exits_left"] -= 1
+            # Safety first: an emergency exit ALWAYS opens the box. The counter is only a
+            # nudge ("3 of 5 left"); it never blocks you from getting your phone out.
+            state["exits_left"] = max(0, state["exits_left"] - 1)
         if reason == "urgent" and not state.get("urgent_pending"):
             raise HTTPException(403, "No urgent message waiting")
         await do_unlock(reason)

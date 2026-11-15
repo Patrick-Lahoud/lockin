@@ -281,7 +281,7 @@ async def cmd_emergency(update: Update, ctx: ContextTypes.DEFAULT_TYPE, reason: 
     ok, data = await pi.unlock("emergency")
     if ok:
         log.info("emergency exit: %s", reason or "(no reason)")
-        await update.effective_message.reply_text(f"🔓 Unlocked. {data['exits_left']} exit{'s' if data['exits_left'] != 1 else ''} left. Take care of it.")
+        await update.effective_message.reply_text("🔓 Unlocked. Take care of it." + (f" ({data['exits_left']} exit{'s' if data['exits_left'] != 1 else ''} left this session)" if data.get('exits_left') else ""))
     else:
         await update.effective_message.reply_text(f"🔒 {data.get('detail')}. {minutes_left(st)} min to go. You've got this.")
 

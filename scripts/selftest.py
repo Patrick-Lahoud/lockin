@@ -109,6 +109,12 @@ def server_tests(pi):
     call(pi, "/lock", {"minutes": 1})
     _, st, _ = call(pi, "/unlock", {"reason": "emergency"})
     check("emergency exit costs 1 exit", st["mode"] == "idle" and st["exits_left"] == st["max_exits"] - 1, st["exits_left"])
+    opened = 0
+    for _ in range(6):  # more than max_exits: an emergency must ALWAYS open the box
+        call(pi, "/lock", {"minutes": 1})
+        code, st, _ = call(pi, "/unlock", {"reason": "emergency"})
+        opened += code == 200 and st["mode"] == "idle"
+    check("emergency exit always opens (6 in a row, more than max_exits)", opened == 6, opened)
     _, st, _ = call(pi, "/reset", {})
     check("reset refills exits", st["exits_left"] == st["max_exits"])
 

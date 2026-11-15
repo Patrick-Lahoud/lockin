@@ -772,12 +772,11 @@
         d ? `<div class="digest-line">${esc(d.text)}</div>` : "",
       ].join("");
 
-      const dead = state.exitsLeft <= 0;
       action.innerHTML = `
         ${info ? `<div class="locked-info">${info}</div>` : ""}
-        <button type="button" class="hold" id="hold" ${dead ? "disabled" : ""}>
+        <button type="button" class="hold" id="hold">
           <span class="hold-fill" id="holdFill"></span>
-          <span class="hold-label" id="holdLabel">${dead ? "No emergency exits left" : "Hold 3s for Emergency Exit"}</span>
+          <span class="hold-label" id="holdLabel">Hold 3s for Emergency Exit</span>
         </button>`;
       wireHold();
       if (urgent) $("freeBtn").onclick = unlockFree;
