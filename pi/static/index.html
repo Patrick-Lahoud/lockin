@@ -75,8 +75,13 @@
   }
   #frame.locked {
     border: 4px solid transparent;
-    background: linear-gradient(var(--canvas), var(--canvas)) padding-box, var(--grad) border-box;
-    box-shadow: 0 0 34px rgba(191, 90, 242, .35);
+    background: linear-gradient(var(--canvas), var(--canvas)) padding-box,
+                linear-gradient(135deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .08) 45%, rgba(255, 255, 255, .4)) border-box;
+    box-shadow: 0 0 30px rgba(255, 255, 255, .08);
+  }
+  body.light #frame.locked {
+    background: linear-gradient(var(--canvas), var(--canvas)) padding-box,
+                linear-gradient(135deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .06) 45%, rgba(0, 0, 0, .28)) border-box;
   }
 
   /* ---------- header ---------- */
@@ -391,9 +396,9 @@
   .aurora i:nth-child(2) { background: var(--g2); right: -160px; top: -140px; animation-duration: 22s; animation-delay: -6s; }
   .aurora i:nth-child(3) { background: var(--g3); left: 200px; bottom: -300px; animation-duration: 26s; animation-delay: -12s; opacity: .24; }
   body.light .aurora i { opacity: .2; }
-  #frame.locked .aurora i:nth-child(1) { background: var(--g3); }
-  #frame.locked .aurora i:nth-child(2) { background: var(--g4); }
-  #frame.locked .aurora i:nth-child(3) { background: var(--g2); }
+  /* locked: colors drain to a calm monochrome, the starfield slowly turns */
+  .aurora i { transition: background 1.2s ease, filter 1.8s ease, opacity 1.8s ease; }
+  #frame.locked .aurora i { filter: blur(80px) grayscale(1) brightness(.75); opacity: .2; }
   @keyframes drift { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(70px, 40px) scale(1.15); } 100% { transform: translate(-40px, 80px) scale(.95); } }
 
   .overlay { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
@@ -448,7 +453,10 @@
   .aurora i { background: var(--g1); opacity: .36; }
   .aurora i:nth-child(2) { background: var(--g2); }
   .aurora i:nth-child(3) { background: var(--g3); opacity: .26; }
-  .stars { position: absolute; inset: 0; }
+  .stars { position: absolute; inset: -45%; transition: transform 2.4s cubic-bezier(.2, .8, .2, 1), opacity 1.8s ease; }
+  #frame.locked .stars { animation: skyturn 140s linear infinite; opacity: 1; }
+  #frame.locked .stars b { animation-duration: 3.2s; }
+  @keyframes skyturn { from { transform: rotate(0deg) scale(1.08); } to { transform: rotate(360deg) scale(1.08); } }
   .stars b { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: 0;
              box-shadow: 0 0 6px rgba(255, 255, 255, .8); animation: twinkle 6s ease-in-out infinite; }
   body.light .stars b { background: var(--g2); box-shadow: none; }
@@ -840,7 +848,7 @@
   (function makeStars() {
     const box = $("stars");
     if (!box) return;
-    for (let k = 0; k < 16; k++) {
+    for (let k = 0; k < 36; k++) {
       const b = document.createElement("b");
       b.style.left = Math.random() * 100 + "%";
       b.style.top = Math.random() * 100 + "%";
