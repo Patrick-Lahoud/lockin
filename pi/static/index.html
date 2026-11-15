@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=800, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <meta name="theme-color" content="#000000" />
 <title>Lock In — Pi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" />
 <style>
   :root {
     --ink: #ffffff;
@@ -72,8 +74,9 @@
     box-shadow: 0 20px 50px rgba(0, 0, 0, .18);
   }
   #frame.locked {
-    border: 4px solid var(--red);
-    box-shadow: inset 0 0 28px rgba(255, 69, 58, .22), 0 0 24px rgba(255, 69, 58, .22);
+    border: 4px solid transparent;
+    background: linear-gradient(var(--canvas), var(--canvas)) padding-box, var(--grad) border-box;
+    box-shadow: 0 0 34px rgba(191, 90, 242, .35);
   }
 
   /* ---------- header ---------- */
@@ -82,7 +85,7 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 12px;
-    padding: 14px 22px 6px;
+    padding: 30px 22px 10px;
     flex: none;
   }
   .icons { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
@@ -99,14 +102,14 @@
   .icon.is-off { color: var(--gray-dim); opacity: .55; }
 
   .segmented {
-    display: flex; align-items: center; gap: 4px;
-    padding: 4px; border-radius: 999px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px; border-radius: 999px;
     background: var(--surface); border: 1px solid var(--hair);
   }
   .seg {
     border: 0; border-radius: 999px; cursor: pointer;
-    padding: 6px 20px; background: transparent; color: var(--gray);
-    font: inherit; font-size: 14px; font-weight: 500;
+    padding: 11px 30px; background: transparent; color: var(--gray);
+    font: inherit; font-size: 20px; font-weight: 600;
     transition: background .18s ease, color .18s ease, transform .15s ease;
   }
   .seg.active {
@@ -133,36 +136,38 @@
     letter-spacing: -.05em; font-variant-numeric: tabular-nums; color: var(--ink);
   }
   .clock.small { font-size: 94px; }
-  .subclock { margin-top: 6px; font-size: 22px; font-weight: 500; letter-spacing: -.02em; color: var(--gray); font-variant-numeric: tabular-nums; }
+  .subclock { margin-top: 6px; font-size: 26px; font-weight: 500; letter-spacing: -.02em; color: var(--gray); font-variant-numeric: tabular-nums; }
 
   .action-row { display: flex; align-items: center; gap: 10px; }
-  .pills { display: flex; align-items: center; gap: 2px; height: 52px; padding: 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--hair); }
+  .pills { display: flex; align-items: center; gap: 4px; height: 62px; padding: 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--hair); }
   .pill {
-    height: 44px; border: 0; border-radius: 999px; cursor: pointer;
-    padding: 0 13px; background: transparent; color: var(--gray);
-    font: inherit; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;
+    height: 52px; border: 0; border-radius: 999px; cursor: pointer;
+    padding: 0 26px; background: transparent; color: var(--gray);
+    font: inherit; font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums;
     transition: background .18s ease, color .18s ease, transform .15s ease;
   }
-  .pill.active { background: var(--ink); color: var(--canvas); font-weight: 600; }
+  .pill.active { background: var(--grad); color: #fff; font-weight: 700; box-shadow: 0 4px 14px rgba(191, 90, 242, .35); }
   .pill:active { transform: scale(.95); }
 
   .lock-btn {
-    height: 52px; border: 0; border-radius: 999px; cursor: pointer;
-    padding: 0 32px; background: var(--red); color: #fff;
-    font: inherit; font-size: 16px; font-weight: 600; letter-spacing: -.01em;
-    box-shadow: 0 6px 20px rgba(255, 69, 58, .35);
+    height: 62px; border: 0; border-radius: 999px; cursor: pointer;
+    padding: 0 44px; background: var(--grad); background-size: 220% 100%; color: #fff;
+    font: inherit; font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+    box-shadow: 0 10px 28px rgba(191, 90, 242, .45);
+    animation: shimmer 6s ease-in-out infinite;
     transition: transform .15s ease, background .2s ease;
   }
-  .lock-btn:active { transform: scale(.97); background: #ff5e54; }
+  .lock-btn:active { transform: scale(.96); }
+  @keyframes shimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
   .lock-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
 
-  .hint { height: 16px; padding-top: 6px; font-size: 11.5px; color: var(--gray); text-align: center; }
+  .hint { height: 22px; padding-top: 8px; font-size: 15px; color: var(--gray); text-align: center; }
   #action { width: 100%; display: flex; flex-direction: column; align-items: center; }
 
   .hold {
-    position: relative; width: 288px; height: 48px; overflow: hidden; cursor: pointer;
+    position: relative; width: 360px; height: 56px; overflow: hidden; cursor: pointer;
     border-radius: 999px; border: 1px solid rgba(255, 69, 58, .4); background: var(--surface);
-    color: var(--red); font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .02em;
+    color: var(--red); font: inherit; font-size: 16px; font-weight: 600; letter-spacing: .02em;
     display: flex; align-items: center; justify-content: center;
     transition: transform .15s ease;
   }
@@ -178,22 +183,22 @@
     border-radius: 14px; background: var(--surface); border: 1px solid var(--hair);
   }
   .msg-card.urgent { background: rgba(255, 69, 58, .12); border-color: rgba(255, 69, 58, .35); }
-  .msg-card .txt { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg-card .txt { flex: 1; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .msg-card .who { font-weight: 600; }
   .msg-card .act {
     flex: none; border: 0; border-radius: 999px; padding: 7px 13px; cursor: pointer;
-    background: var(--red); color: #fff; font: inherit; font-size: 12px; font-weight: 600;
+    background: var(--red); color: #fff; font: inherit; font-size: 15px; font-weight: 600;
   }
   .digest-line {
-    font-size: 12px; color: var(--gray); line-height: 1.35; padding: 0 4px;
+    font-size: 15px; color: var(--gray); line-height: 1.35; padding: 0 4px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
 
   /* ---------- to-do ---------- */
   .todo-wrap { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; min-height: 0; }
   .todo-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
-  .todo-head h2 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
-  .todo-head span { font-size: 12px; font-weight: 500; color: var(--gray); margin-left: auto; }
+  .todo-head h2 { font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+  .todo-head span { font-size: 15px; font-weight: 500; color: var(--gray); margin-left: auto; }
   .todo-head .add {
     width: 32px; height: 32px; flex: none; border-radius: 11px; cursor: pointer;
     border: 1px solid var(--hair); background: var(--surface); color: var(--ink);
@@ -364,10 +369,84 @@
     transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
     max-width: 620px; padding: 9px 15px; border-radius: 12px;
     background: var(--surface-3); color: var(--ink); border: 1px solid var(--hair);
-    font-size: 12.5px; text-align: center; box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
+    font-size: 16px; text-align: center; box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
     transition: opacity .16s ease, transform .16s ease;
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- energy: Apple-style aurora + gradient accents ---------- */
+  :root { --g1: #5e5ce6; --g2: #bf5af2; --g3: #ff375f; --g4: #ff9f0a;
+          --grad: linear-gradient(120deg, var(--g1), var(--g2) 45%, var(--g3) 80%, var(--g4)); }
+  header, main { position: relative; z-index: 1; }
+  .aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .aurora i { position: absolute; width: 440px; height: 440px; border-radius: 50%; filter: blur(80px);
+              opacity: .32; animation: drift 18s ease-in-out infinite alternate; transition: background 1.2s ease; }
+  .aurora i:nth-child(1) { background: var(--g1); left: -140px; top: -180px; }
+  .aurora i:nth-child(2) { background: var(--g2); right: -160px; top: -140px; animation-duration: 22s; animation-delay: -6s; }
+  .aurora i:nth-child(3) { background: var(--g3); left: 200px; bottom: -300px; animation-duration: 26s; animation-delay: -12s; opacity: .24; }
+  body.light .aurora i { opacity: .2; }
+  #frame.locked .aurora i:nth-child(1) { background: var(--g3); }
+  #frame.locked .aurora i:nth-child(2) { background: var(--g4); }
+  #frame.locked .aurora i:nth-child(3) { background: var(--g2); }
+  @keyframes drift { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(70px, 40px) scale(1.15); } 100% { transform: translate(-40px, 80px) scale(.95); } }
+
+  .overlay { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+             background: color-mix(in srgb, var(--canvas) 70%, transparent); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
+             animation: fadeIn .35s ease; }
+  .overlay[hidden] { display: none; }
+  .drop-svg { width: 150px; height: 128px; overflow: visible; }
+  .phone { animation: phoneDrop 1.6s cubic-bezier(.5, 0, .3, 1) infinite; }
+  @keyframes phoneDrop { 0% { transform: translateY(-16px); opacity: 0; } 18% { opacity: 1; } 65% { transform: translateY(56px); opacity: 1; } 100% { transform: translateY(56px); opacity: 0; } }
+  .arm-num { font-size: 84px; font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
+             background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .arm-num.tick { animation: tick .6s cubic-bezier(.2, .9, .3, 1.3); }
+  @keyframes tick { 0% { transform: scale(1.4); opacity: .3; } 100% { transform: scale(1); opacity: 1; } }
+  .arm-title { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+  .arm-sub { font-size: 18px; color: var(--gray); }
+  .arm-cancel { margin-top: 12px; height: 50px; padding: 0 38px; border-radius: 999px; border: 1px solid var(--hair);
+                background: var(--surface); color: var(--ink); font: inherit; font-size: 18px; font-weight: 600; cursor: pointer; }
+  .arm-cancel:active { transform: scale(.97); }
+  .fx-wrap { position: relative; display: grid; place-items: center; }
+  .padlock { width: 128px; height: 156px; overflow: visible; filter: drop-shadow(0 14px 34px rgba(191, 90, 242, .5)); animation: pop .5s cubic-bezier(.2, .9, .3, 1.4); }
+  .shackle { animation: shut .6s .3s cubic-bezier(.5, 0, .2, 1.5) both; }
+  @keyframes shut { 0% { transform: translateY(-24px); } 100% { transform: translateY(0); } }
+  @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .lock-ring { position: absolute; width: 200px; height: 200px; border-radius: 50%; border: 3px solid var(--g2); animation: ring 1s .8s ease-out both; }
+  @keyframes ring { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ---------- polish: rounded type, frosted glass, stars, rotating color moods ---------- */
+  @property --g1 { syntax: "<color>"; inherits: true; initial-value: #5e5ce6; }
+  @property --g2 { syntax: "<color>"; inherits: true; initial-value: #bf5af2; }
+  @property --g3 { syntax: "<color>"; inherits: true; initial-value: #ff375f; }
+  @property --g4 { syntax: "<color>"; inherits: true; initial-value: #ff9f0a; }
+  :root { transition: --g1 2.4s ease, --g2 2.4s ease, --g3 2.4s ease, --g4 2.4s ease; }
+  .clock, .arm-num, .arm-title, .seg, .pill, .lock-btn, .todo-head h2, .weather-temp {
+    font-family: "Nunito", "SF Pro Rounded", -apple-system, sans-serif;
+  }
+  .clock { font-weight: 800; letter-spacing: -.035em; text-shadow: 0 6px 40px color-mix(in srgb, var(--g2) 35%, transparent); }
+  .seg, .pill { font-weight: 700; }
+  .lock-btn { font-weight: 800; }
+  .segmented {
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+    border: 1px solid rgba(255, 255, 255, .14);
+    backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .12);
+  }
+  .seg.active { background: rgba(255, 255, 255, .16); color: #fff; }
+  body.light .seg.active { background: #fff; color: #000; }
+  .pills, .msg-card, .hold {
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .aurora i { background: var(--g1); opacity: .36; }
+  .aurora i:nth-child(2) { background: var(--g2); }
+  .aurora i:nth-child(3) { background: var(--g3); opacity: .26; }
+  .stars { position: absolute; inset: 0; }
+  .stars b { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: 0;
+             box-shadow: 0 0 6px rgba(255, 255, 255, .8); animation: twinkle 6s ease-in-out infinite; }
+  body.light .stars b { background: var(--g2); box-shadow: none; }
+  @keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.6); } 50% { opacity: .55; transform: scale(1); } }
 
     @media (prefers-reduced-motion: reduce) {
     #track, .popover, .toast { transition: none; animation: none; }
@@ -378,6 +457,31 @@
 <body>
   <div id="stage">
     <div id="frame">
+      <div class="aurora"><i></i><i></i><i></i><div class="stars" id="stars"></div></div>
+      <div id="arm" class="overlay" hidden>
+        <svg class="drop-svg" viewBox="0 0 160 130" aria-hidden="true">
+          <defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--g1)"/><stop offset=".55" style="stop-color:var(--g2)"/><stop offset="1" style="stop-color:var(--g3)"/></linearGradient></defs>
+          <g class="phone"><rect x="60" y="4" width="40" height="70" rx="9" fill="none" stroke="url(#lgA)" stroke-width="5"/><rect x="73" y="11" width="14" height="3" rx="1.5" fill="url(#lgA)"/></g>
+          <path d="M20 66 H140 V118 a8 8 0 0 1 -8 8 H28 a8 8 0 0 1 -8 -8 Z" fill="var(--canvas)" stroke="url(#lgA)" stroke-width="5" stroke-linejoin="round"/>
+        </svg>
+        <div class="arm-num" id="armNum">8</div>
+        <div class="arm-title">Put your phone in the box</div>
+        <div class="arm-sub">Close the lid · locking in for <span id="armMin">30</span> min</div>
+        <button class="arm-cancel" id="armCancel" type="button">Cancel</button>
+      </div>
+      <div id="lockfx" class="overlay" hidden>
+        <div class="fx-wrap">
+          <span class="lock-ring"></span>
+          <svg class="padlock" viewBox="0 0 120 150" aria-hidden="true">
+            <defs><linearGradient id="lgB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--g1)"/><stop offset=".55" style="stop-color:var(--g2)"/><stop offset="1" style="stop-color:var(--g3)"/></linearGradient></defs>
+            <path class="shackle" d="M34 72 V46 a26 26 0 0 1 52 0 V72" fill="none" stroke="url(#lgB)" stroke-width="12" stroke-linecap="round"/>
+            <rect x="16" y="66" width="88" height="76" rx="18" fill="url(#lgB)"/>
+            <circle cx="60" cy="98" r="8" fill="#fff" opacity=".92"/><rect x="56" y="100" width="8" height="18" rx="4" fill="#fff" opacity=".92"/>
+          </svg>
+        </div>
+        <div class="arm-title" style="margin-top:10px">Locked in</div>
+        <div class="arm-sub">Phone and laptop are locked. You've got this.</div>
+      </div>
       <header>
         <div></div>
         <nav class="segmented" id="nav"></nav>
@@ -493,7 +597,7 @@
   <audio id="player" preload="none"></audio>
 
 <script>
-  const DURATIONS = [1, 15, 30, 45, 60];
+  const DURATIONS = [1, 30, 60];
   const SILENCE = { title: "Silence", kind: "silence", label: "Off" };
   const SYNTH = [
     { title: "White Noise", kind: "synth", synth: "white", label: "Generated" },
@@ -651,7 +755,7 @@
             </div>
             <button type="button" class="lock-btn" id="lock" ${state.lidClosed ? "" : "disabled"}>Lock In</button>
           </div>
-          <div class="hint">${state.lidClosed ? "Phone in the box — close the lid, then lock in" : "Close the lid to lock in"}</div>
+          ${state.lidClosed ? "" : '<div class="hint">Close the lid to lock in</div>'}
         </div>`;
     }
   }
@@ -701,13 +805,61 @@
     ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => btn.addEventListener(ev, stop));
   }
 
-  async function lockIn() {
-    if (!state.lidClosed) return toast("Close the lid first");
-    const btn = $("lock");
-    if (btn) btn.disabled = true;
-    try { apply(await post("/lock", { minutes: state.selectedMinutes })); }
-    catch (err) { toast(err.message); if (btn) btn.disabled = false; }
+  /* color moods: a new one each load and each lock-in, crossfaded slowly (never jumpy) */
+  const PALETTES = [
+    ["#5e5ce6", "#bf5af2", "#ff375f", "#ff9f0a"],   // aurora
+    ["#ff9f0a", "#ff6b8b", "#ff375f", "#ffd166"],   // sunset
+    ["#0a84ff", "#5ac8fa", "#30d158", "#ffd60a"],   // sky & sea
+    ["#7d5fff", "#b57bff", "#ff7eb6", "#5ac8fa"],   // twilight
+  ];
+  function nextPalette() {
+    let i;
+    try { i = (Number(localStorage.getItem("lockin_pal") ?? -1) + 1) % PALETTES.length; localStorage.setItem("lockin_pal", i); }
+    catch { i = Math.floor(Math.random() * PALETTES.length); }
+    PALETTES[i].forEach((c, k) => document.documentElement.style.setProperty(`--g${k + 1}`, c));
   }
+  nextPalette();
+  (function makeStars() {
+    const box = $("stars");
+    if (!box) return;
+    for (let k = 0; k < 16; k++) {
+      const b = document.createElement("b");
+      b.style.left = Math.random() * 100 + "%";
+      b.style.top = Math.random() * 100 + "%";
+      b.style.animationDelay = (-Math.random() * 6).toFixed(2) + "s";
+      b.style.animationDuration = (5 + Math.random() * 4).toFixed(2) + "s";
+      box.appendChild(b);
+    }
+  })();
+
+  let armTimer = null;
+  function tickAnim(el) { el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick"); }
+  function hideArm() { clearInterval(armTimer); armTimer = null; $("arm").hidden = true; }
+  function lockIn() {
+    if (!state.lidClosed) return toast("Close the lid first");
+    if (armTimer) return;
+    let n = 8;
+    const num = $("armNum");
+    $("armMin").textContent = state.selectedMinutes;
+    num.textContent = n;
+    $("arm").hidden = false;
+    tickAnim(num);
+    armTimer = setInterval(async () => {
+      n -= 1;
+      if (n > 0) { num.textContent = n; tickAnim(num); return; }
+      hideArm();
+      try { apply(await post("/lock", { minutes: state.selectedMinutes })); }
+      catch (err) { toast(err.message); }
+    }, 1000);
+  }
+  function playLockFx() {
+    nextPalette();
+    const fx = $("lockfx");
+    fx.hidden = true; void fx.offsetWidth; fx.hidden = false;  // restart the animation
+    clearTimeout(playLockFx.t);
+    playLockFx.t = setTimeout(() => { fx.hidden = true; }, 2300);
+  }
+  $("armCancel").addEventListener("click", () => { hideArm(); toast("Cancelled"); });
 
   async function unlockFree() {
     try { apply(await post("/unlock", { reason: "urgent" })); toast("Unlocked for the urgent message"); }
@@ -1103,10 +1255,15 @@
   }
 
   /* ---------- server state (CONTRACT.md) ---------- */
+  let seenState = false;
   function apply(s) {
     if (typeof s.server_time === "number") skew = s.server_time - Date.now() / 1000;
 
+    const wasMode = state.mode;
     state.mode = s.mode === "locked" ? "locked" : "idle";
+    if (seenState && wasMode !== "locked" && state.mode === "locked") playLockFx();  // from the box OR from Telegram
+    if (state.mode === "locked" && armTimer) hideArm();
+    seenState = true;
     state.endsAt = s.ends_at || null;
     state.startedAt = s.started_at || null;
     state.exitsLeft = Number(s.exits_left) || 0;
