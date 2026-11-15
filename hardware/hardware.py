@@ -23,6 +23,7 @@ UNLOCK_ANGLE = int(os.getenv("LOCKIN_UNLOCK_ANGLE", "0"))
 HAS_LID = os.getenv("LOCKIN_HAS_LID", "0") == "1"
 
 REAL = False
+FAKE_REASON = ""
 _servo = None
 _lid = None
 _fake_lid_closed = True
@@ -41,8 +42,9 @@ try:
     _servo.detach()  # no signal until we move: stops buzzing and saves power
     REAL = True
     print(f"[hardware] real GPIO: servo on GPIO{SERVO_PIN}")
-except Exception as e:  # not a Pi, or gpiozero missing
-    print(f"[hardware] no GPIO ({e.__class__.__name__}: {e}); using FAKE hardware")
+except Exception as e:  # not a Pi, or gpiozero missing, or the pin is already in use
+    FAKE_REASON = f"{e.__class__.__name__}: {e}"
+    print(f"[hardware] no GPIO ({FAKE_REASON}); using FAKE hardware")
 
 if REAL and HAS_LID:
     # Separate on purpose: a broken lid switch must never disable the servo.
@@ -89,6 +91,13 @@ def set_fake_lid(closed: bool) -> None:
 
 if __name__ == "__main__":
     # Test block: run `python3 hardware.py` on the Pi.
+    if not REAL:
+        print("\n❌ NOT TALKING TO THE REAL PINS, so the servo will NOT move.")
+        print(f"   Reason: {FAKE_REASON}")
+        if "in use" in FAKE_REASON.lower() or "busy" in FAKE_REASON.lower():
+            print("   → The Lock In server is probably already using the pin. Run:  sudo systemctl stop lockin")
+        print("   → For a full step-by-step check run:  python3 servo_test.py")
+        raise SystemExit(1)
     print("lid closed?", lid_closed())
     print("locking...")
     lock()
