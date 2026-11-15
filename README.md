@@ -22,7 +22,10 @@ cd pi && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .
 # 2. the laptop blocker, against a fake hosts file (no sudo)
 cd laptop && cp /etc/hosts /tmp/fake-hosts && python3 lockin_guard.py system --pi http://localhost:8000 --hosts-file /tmp/fake-hosts --cache /tmp/lockin-cache.json --no-flush
 
-# 3. the agent (needs a bot token + Gemini key in agent/.env)
+# 3. optional: the same box screen on this laptop, full-screen while locked
+# cd laptop && python3 lockin_guard.py screen --pi http://localhost:8000
+
+# 4. the agent (needs a bot token + Gemini key in agent/.env)
 cd agent && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp .env.example .env && .venv/bin/python bot.py
 ```
 Tap **1 min** on the box screen and watch all three react.

@@ -10,7 +10,9 @@ Modes
            hosts file, flushes DNS, quits blocked apps. Works for Safari, Chrome, Yandex,
            Firefox, Edge and every desktop app, because the OS itself can't resolve the sites.
   tabs     run as you (macOS only). Sends tabs that are ALREADY open on a blocked site to the
-           "Locked In" page (Safari, Chrome, Yandex, Edge, Brave, Arc, Chromium, Vivaldi).
+           box's own screen (Safari, Chrome, Yandex, Edge, Brave, Arc, Chromium, Vivaldi).
+  screen   run as you. While the box is locked, shows the Pi's screen in a borderless window,
+           so the computer looks exactly like the box. Closes it again on unlock.
   clear    remove the LOCKIN section once and exit (used by the uninstaller).
 
 Fail closed: if the Pi can't be reached mid-session, keep blocking until ends_at, then open.
@@ -21,6 +23,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -157,6 +160,118 @@ class Session:
         if cached and cached.get("ends_at") and time.time() < cached["ends_at"]:
             return {**cached, "locked": True}
         return {"locked": False, "domains": [], "apps": [], "ends_at": None}
+
+
+# ---------------------------------------------------------------- the box screen
+# The screen runs as the logged-in user, so its browser profile has to live somewhere
+# that user can write (ProgramData is read-only for non-admins).
+if IS_WIN:
+    USER_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "LockIn"
+elif IS_MAC:
+    USER_DIR = Path.home() / "Library" / "Application Support" / "LockIn"
+else:
+    USER_DIR = Path.home() / ".local" / "share" / "lockin"
+SCREEN_PROFILE = USER_DIR / "screen-profile"
+
+
+def find_screen_browser():
+    """A Chrome-family binary that can open an app window, or None."""
+    if IS_WIN:
+        for path in (
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        ):
+            if os.path.exists(path):
+                return path
+        return None
+    if IS_MAC:
+        for app in ("Google Chrome", "Microsoft Edge", "Brave Browser", "Chromium"):
+            path = f"/Applications/{app}.app/Contents/MacOS/{app}"
+            if os.path.exists(path):
+                return path
+        return None
+    for name in ("chromium", "chromium-browser", "google-chrome", "microsoft-edge"):
+        path = shutil.which(name)
+        if path:
+            return path
+    return None
+
+
+class BoxScreen:
+    """The Pi's screen, mirrored in a borderless window on this computer.
+
+    It points at the Pi's own /, so there is no second copy of the UI to drift:
+    whatever the box shows, this shows. A private user-data-dir keeps it in its
+    own process, so closing it never touches the browser you are actually using.
+    """
+
+    def __init__(self, pi_url: str):
+        self.url = pi_url.rstrip("/") + "/"
+        self.proc = None
+        self.warned = False
+
+    def is_open(self) -> bool:
+        return self.proc is not None and self.proc.poll() is None
+
+    def open(self) -> None:
+        if self.is_open():
+            return
+        browser = find_screen_browser()
+        if not browser:
+            if not self.warned:
+                self.warned = True
+                log("no Chrome or Edge found, so the box screen can't be shown here")
+            return
+        try:
+            SCREEN_PROFILE.mkdir(parents=True, exist_ok=True)
+            self.proc = subprocess.Popen(
+                [
+                    browser,
+                    f"--app={self.url}",
+                    "--start-fullscreen",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--autoplay-policy=no-user-gesture-required",
+                    f"--user-data-dir={SCREEN_PROFILE}",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            log(f"box screen open: {self.url}")
+        except Exception as e:
+            log("couldn't open the box screen:", e)
+
+    def close(self) -> None:
+        if self.is_open():
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait(timeout=5)
+            log("box screen closed")
+        self.proc = None
+
+
+def run_screen(args, cfg) -> None:
+    """Keep a window showing the Pi's screen open exactly while the box is locked."""
+    session = Session(Path(args.cache) if args.cache else DATA_DIR / "screen-cache.json", writable=False)
+    screen = BoxScreen(cfg["pi_url"])
+    log(f"guard (screen) mirroring {cfg['pi_url']}")
+    try:
+        while True:
+            info = session.current(cfg["pi_url"])
+            if info["locked"] and not screen.is_open():
+                screen.open()
+            elif not info["locked"] and screen.is_open():
+                screen.close()
+            time.sleep(POLL_SECONDS)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        screen.close()
 
 
 # ---------------------------------------------------------------- hosts file (root)
@@ -308,7 +423,7 @@ def run_tabs(args, cfg) -> None:
             if info["locked"]:
                 prefixes, targets = [], []
                 for d in info["domains"]:
-                    page = f"{cfg['pi_url']}/blocked?site={urllib.parse.quote(d)}"
+                    page = f"{cfg['pi_url']}/"  # the box's own screen, so both look the same
                     for h in [d, f"www.{d}", f"m.{d}"] + EXTRA_HOSTS.get(d, []):
                         for scheme in ("https", "http"):
                             prefixes.append(f"{scheme}://{h}/")
@@ -335,7 +450,7 @@ def run_tabs(args, cfg) -> None:
 # ---------------------------------------------------------------- main
 def main() -> None:
     p = argparse.ArgumentParser(description="Lock In laptop guard")
-    p.add_argument("mode", choices=["system", "tabs", "clear"])
+    p.add_argument("mode", choices=["system", "tabs", "screen", "clear"])
     p.add_argument("--pi", help="Pi URL, e.g. http://lockin.local:8000 (default: config.json)")
     p.add_argument("--hosts-file", help="use a different hosts file (for testing without sudo)")
     p.add_argument("--cache", help="cache file path (for testing without sudo)")
@@ -352,6 +467,8 @@ def main() -> None:
         return
     if args.mode == "system":
         run_system(args, cfg)
+    elif args.mode == "screen":
+        run_screen(args, cfg)
     else:
         run_tabs(args, cfg)
 

@@ -80,9 +80,29 @@ EOF
 launchctl bootout "gui/$(id -u)/$TAB_LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$TAB_PLIST"
 
+# 3) user agent: shows the box's own screen while locked, so the laptop looks like the Pi.
+SCREEN_LABEL="ca.lockin.screen"
+SCREEN_PLIST="$HOME/Library/LaunchAgents/$SCREEN_LABEL.plist"
+cat > "$SCREEN_PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$SCREEN_LABEL</string>
+  <key>ProgramArguments</key><array>
+    <string>$PY</string><string>$DIR/lockin_guard.py</string><string>screen</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/lockin-screen.log</string>
+  <key>StandardErrorPath</key><string>/tmp/lockin-screen.log</string>
+</dict></plist>
+EOF
+launchctl bootout "gui/$(id -u)/$SCREEN_LABEL" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$SCREEN_PLIST"
+
 echo
 echo "Installed ✓  The laptop now follows the box at $PI_URL"
-echo "  Logs:       tail -f /var/log/lockin-guard.log /tmp/lockin-tabs.log"
+echo "  Logs:       tail -f /var/log/lockin-guard.log /tmp/lockin-tabs.log /tmp/lockin-screen.log"
 echo "  Uninstall:  ./uninstall_mac.sh"
 echo
 echo "First lock only: macOS asks 'python3 wants to control Safari / Google Chrome / Yandex'. Click OK."
