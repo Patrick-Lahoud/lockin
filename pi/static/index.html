@@ -141,6 +141,7 @@
     letter-spacing: -.05em; font-variant-numeric: tabular-nums; color: var(--ink);
   }
   .clock.small { font-size: 94px; }
+  .clock .ampm { font-size: .3em; font-weight: 700; letter-spacing: .02em; margin-left: .18em; opacity: .75; vertical-align: .9em; }
   .subclock { margin-top: 6px; font-size: 26px; font-weight: 500; letter-spacing: -.02em; color: var(--gray); font-variant-numeric: tabular-nums; }
 
   .action-row { display: flex; align-items: center; gap: 10px; }
@@ -712,7 +713,10 @@
 
   const pad = (n) => String(n).padStart(2, "0");
   const nowS = () => Date.now() / 1000 + skew;
-  const clockText = () => { const d = new Date(); return `${d.getHours() % 12 || 12}:${pad(d.getMinutes())}`; };
+  const ampm = () => (new Date().getHours() < 12 ? "AM" : "PM");
+  const clockText = () => { const d = new Date(); return `${d.getHours() % 12 || 12}:${pad(d.getMinutes())} ${ampm()}`; };
+  // big clock: the time large, AM/PM small beside it
+  const bigClockHTML = () => { const d = new Date(); return `${d.getHours() % 12 || 12}:${pad(d.getMinutes())}<span class="ampm">${ampm()}</span>`; };
   const countdownText = () => {
     const s = Math.max(0, state.secondsLeft);
     return s >= 3600
@@ -781,7 +785,7 @@
       wireHold();
       if (urgent) $("freeBtn").onclick = unlockFree;
     } else {
-      hero.innerHTML = `<div class="clock" id="homeBig">${clockText()}</div>`;
+      hero.innerHTML = `<div class="clock" id="homeBig">${bigClockHTML()}</div>`;
       action.innerHTML = `
         <div>
           <div class="action-row">
@@ -805,7 +809,8 @@
       const sub = $("homeSub");
       if (sub) sub.textContent = `${clockText()} · ${state.exitsLeft} of ${state.maxExits} exits · ${FACE[state.face] || "Focused"}`;
     } else {
-      big.textContent = clockText();
+      const html = bigClockHTML();
+      if (big.innerHTML !== html) big.innerHTML = html;
     }
   }
 
