@@ -360,9 +360,14 @@
   .bt-act { border: 0; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; background: var(--blue); color: #fff; }
   .scan-btn { width: 100%; height: 34px; margin-top: 10px; border-radius: 10px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
   .scan-btn:active { transform: scale(.99); }
-  .theme-toggle { display: flex; gap: 4px; padding: 4px; margin-top: 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--hair); }
-  .theme-toggle button { flex: 1; border: 0; border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; background: transparent; color: var(--gray); }
-  .theme-toggle button.active { background: var(--ink); color: var(--canvas); font-weight: 600; }
+  .theme-toggle { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 6px; margin-top: 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--hair); }
+  .theme-toggle button { display: flex; align-items: center; gap: 7px; border: 0; border-radius: 11px; padding: 9px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; color: var(--gray); }
+  .theme-toggle button .sw { width: 16px; height: 16px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .35); }
+  .theme-toggle button.active { background: var(--ink); color: var(--canvas); }
+  body[data-theme="ocean"]   { --canvas: #03111f; --page: #020a12; --surface: #0b2236; --surface-2: #11304a; --surface-3: #1a4060; }
+  body[data-theme="forest"]  { --canvas: #03140c; --page: #020b07; --surface: #0b2a1b; --surface-2: #113825; --surface-3: #1a4a32; }
+  body[data-theme="sunset"]  { --canvas: #fff6ec; --page: #f3e3d0; --surface: #ffeedd; --surface-2: #fde3c8; --surface-3: #ffffff; --gray: #7a5f4a; }
+  body[data-theme="blossom"] { --canvas: #fff3f7; --page: #f5e1e9; --surface: #ffe6ee; --surface-2: #fbd6e2; --surface-3: #ffffff; --gray: #80556a; }
 
   .toast {
     position: absolute; left: 50%; bottom: 18px; z-index: 60;
@@ -377,7 +382,8 @@
   /* ---------- energy: Apple-style aurora + gradient accents ---------- */
   :root { --g1: #5e5ce6; --g2: #bf5af2; --g3: #ff375f; --g4: #ff9f0a;
           --grad: linear-gradient(120deg, var(--g1), var(--g2) 45%, var(--g3) 80%, var(--g4)); }
-  header, main { position: relative; z-index: 1; }
+  header { position: relative; z-index: 3; }  /* above main, so its drop-down menus get taps */
+  main { position: relative; z-index: 1; }
   .aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
   .aurora i { position: absolute; width: 440px; height: 440px; border-radius: 50%; filter: blur(80px);
               opacity: .32; animation: drift 18s ease-in-out infinite alternate; transition: background 1.2s ease; }
@@ -529,11 +535,8 @@
             </button>
             <div class="popover">
               <h3>Appearance</h3>
-              <div class="sub">Switch between dark and light</div>
-              <div class="theme-toggle" id="themeToggle">
-                <button data-theme="dark" type="button">Dark</button>
-                <button data-theme="light" type="button">Light</button>
-              </div>
+              <div class="sub">Pick a theme</div>
+              <div class="theme-toggle" id="themeToggle"></div>
             </div>
           </div>
         </div>
@@ -807,17 +810,32 @@
 
   /* color moods: a new one each load and each lock-in, crossfaded slowly (never jumpy) */
   const PALETTES = [
-    ["#5e5ce6", "#bf5af2", "#ff375f", "#ff9f0a"],   // aurora
-    ["#ff9f0a", "#ff6b8b", "#ff375f", "#ffd166"],   // sunset
-    ["#0a84ff", "#5ac8fa", "#30d158", "#ffd60a"],   // sky & sea
-    ["#7d5fff", "#b57bff", "#ff7eb6", "#5ac8fa"],   // twilight
+    ["#5e5ce6", "#bf5af2", "#ff375f", "#ff9f0a"],   // 0 aurora
+    ["#ff9f0a", "#ff6b8b", "#ff375f", "#ffd166"],   // 1 sunset
+    ["#0a84ff", "#5ac8fa", "#30d158", "#ffd60a"],   // 2 sky & sea
+    ["#7d5fff", "#b57bff", "#ff7eb6", "#5ac8fa"],   // 3 twilight
+    ["#30d158", "#00c7be", "#a3e635", "#ffd60a"],   // 4 forest
   ];
+  // 6 themes: light = white-based UI; pal = fixed colors (null = rotate the 4 moods)
+  const THEMES = {
+    midnight: { label: "Midnight", light: false, pal: null, sw: "#000" },
+    daylight: { label: "Daylight", light: true,  pal: null, sw: "#fff" },
+    sunset:   { label: "Sunset",   light: true,  pal: 1,    sw: "linear-gradient(135deg,#fff6ec,#ff9f0a)" },
+    ocean:    { label: "Ocean",    light: false, pal: 2,    sw: "linear-gradient(135deg,#03111f,#0a84ff)" },
+    blossom:  { label: "Blossom",  light: true,  pal: 3,    sw: "linear-gradient(135deg,#fff3f7,#ff7eb6)" },
+    forest:   { label: "Forest",   light: false, pal: 4,    sw: "linear-gradient(135deg,#03140c,#30d158)" },
+  };
   function nextPalette() {
-    let i;
-    try { i = (Number(localStorage.getItem("lockin_pal") ?? -1) + 1) % PALETTES.length; localStorage.setItem("lockin_pal", i); }
-    catch { i = Math.floor(Math.random() * PALETTES.length); }
+    const t = THEMES[state.theme] || THEMES.midnight;
+    let i = t.pal;
+    if (i == null) {
+      try { i = (Number(localStorage.getItem("lockin_pal") ?? -1) + 1) % 4; localStorage.setItem("lockin_pal", i); }
+      catch { i = Math.floor(Math.random() * 4); }
+    }
     PALETTES[i].forEach((c, k) => document.documentElement.style.setProperty(`--g${k + 1}`, c));
   }
+  $("themeToggle").innerHTML = Object.entries(THEMES).map(([id, t]) =>
+    `<button data-theme="${id}" type="button"><span class="sw" style="background:${t.sw}"></span>${t.label}</button>`).join("");
   nextPalette();
   (function makeStars() {
     const box = $("stars");
@@ -1234,9 +1252,14 @@
   }
 
   function applyTheme(theme) {
+    if (theme === "dark") theme = "midnight";   // older saved values
+    if (theme === "light") theme = "daylight";
+    if (!THEMES[theme]) theme = "midnight";
     state.theme = theme;
-    document.body.classList.toggle("light", theme === "light");
-    localStorage.setItem("theme", theme);
+    document.body.dataset.theme = theme;
+    document.body.classList.toggle("light", THEMES[theme].light);
+    try { localStorage.setItem("theme", theme); } catch {}
+    nextPalette();
     renderIcons();
   }
 
@@ -1471,7 +1494,7 @@
 
   /* ---------- boot ---------- */
   buildKeyboard();
-  applyTheme(localStorage.getItem("theme") === "light" ? "light" : "dark");
+  applyTheme((() => { try { return localStorage.getItem("theme"); } catch { return null; } })() || "midnight");
   fit();
   renderAll();
   loadBt();
