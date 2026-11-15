@@ -18,11 +18,11 @@ log = logging.getLogger("brain")
 # Backup rules (only used when Gemini is unreachable). Deliberately NOT the bare word "urgent":
 # anyone can type "mark this urgent". Real emergencies use these words.
 URGENT_WORDS = re.compile(
-    r"\b(emergency|hospital|accident|ambulance|police|fell|injured|bleeding|call me (right )?(now|asap)|"
+    r"\b(emergency|hospital|accident|ambulance|police|fell|fallen|injured|bleeding|call me (right )?(now|asap)|"
     r"right now|help me|срочно|скорая)\b",
     re.I,
 )
-TASK_START = re.compile(r"^(please\s+)?(can you\s+)?(buy|get|pick up|grab|bring|call|text|send|email|pay|book|clean|finish|submit|remember to|don'?t forget to)\b", re.I)
+TASK_START = re.compile(r"^(please\s+)?((can|could) (you|u)\s+)?(buy|get|pick up|grab|bring|call|text|send|email|pay|book|clean|finish|submit|remember to|don'?t forget to)\b", re.I)
 
 
 MAX_INPUT_CHARS = 1000  # never send huge messages to Gemini (cost + prompt-injection surface)
@@ -138,7 +138,7 @@ class Brain:
         urgent = bool(URGENT_WORDS.search(text))
         task = None
         if TASK_START.search(text.strip()):
-            task = re.sub(r"^(please\s+)?(can|could) you\s+", "", text.strip(), flags=re.I).rstrip(".!? ")[:60]
+            task = re.sub(r"^(please\s+)?(can|could) (you|u)\s+", "", text.strip(), flags=re.I).rstrip(".!? ")[:60]
             task = task[0].upper() + task[1:] if task else None
         return {"urgent": urgent, "important": urgent or bool(task) or "?" in text, "task": task, "summary": text[:120]}
 

@@ -187,7 +187,28 @@
     display: flex; align-items: center; gap: 12px; padding: 10px 14px;
     border-radius: 14px; background: var(--surface); border: 1px solid var(--hair);
   }
-  .msg-card.urgent { background: rgba(255, 69, 58, .12); border-color: rgba(255, 69, 58, .35); }
+  .msg-card.urgent { background: rgba(255, 69, 58, .16); border-color: rgba(255, 69, 58, .6); animation: urgentPulse 1.2s ease-in-out infinite; }
+  @keyframes urgentPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, .55); } 50% { box-shadow: 0 0 0 10px rgba(255, 69, 58, 0); } }
+  /* huge arrow pointing at the urgent card */
+  .urgent-arrow { position: absolute; left: 50%; bottom: 136px; z-index: 30; transform: translateX(-50%);
+                  display: flex; flex-direction: row; align-items: center; gap: 8px; pointer-events: none; animation: arrowIn .4s ease both; }
+  .urgent-arrow[hidden] { display: none; }
+  .urgent-arrow span { font: 800 16px/1 "Nunito", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #ff453a;
+                       padding: 5px 12px; border-radius: 99px; background: rgba(255, 69, 58, .14); }
+  .urgent-arrow svg { width: 54px; height: 54px; filter: drop-shadow(0 6px 18px rgba(255, 69, 58, .6)); animation: arrowBounce .8s ease-in-out infinite; }
+  @keyframes arrowBounce { 0%, 100% { transform: translateY(-6px); } 50% { transform: translateY(10px); } }
+  @keyframes arrowIn { from { opacity: 0; transform: translate(-50%, -20px) scale(.6); } to { opacity: 1; transform: translateX(-50%); } }
+  /* "added to your to-do" card that drops in */
+  .todo-pop { position: absolute; top: 108px; left: 50%; z-index: 35; transform: translateX(-50%);
+              display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; border-radius: 18px; min-width: 360px;
+              background: color-mix(in srgb, var(--surface-3) 80%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+              border: 1px solid rgba(255, 255, 255, .16); box-shadow: 0 16px 40px rgba(0, 0, 0, .35); animation: popDrop 4.2s cubic-bezier(.2, .9, .3, 1.2) both; }
+  .todo-pop[hidden] { display: none; }
+  .todo-pop .ic { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--grad); }
+  .todo-pop b { display: block; font: 800 18px/1.2 "Nunito", sans-serif; color: var(--ink); }
+  .todo-pop small { font-size: 14px; color: var(--gray); }
+  @keyframes popDrop { 0% { opacity: 0; transform: translate(-50%, -40px) scale(.9); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+                       85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -16px); } }
   .msg-card .txt { flex: 1; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .msg-card .who { font-weight: 600; }
   .msg-card .act {
@@ -483,6 +504,12 @@
         <div class="arm-sub">Close the lid · locking in for <span id="armMin">30</span> min</div>
         <button class="arm-cancel" id="armCancel" type="button">Cancel</button>
       </div>
+      <div id="urgentArrow" class="urgent-arrow" hidden>
+        <span>Urgent</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ff453a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v17"/><path d="M5 13l7 7 7-7"/></svg>
+        <span>Needs you</span>
+      </div>
+      <div id="todoPop" class="todo-pop" hidden></div>
       <div id="lockfx" class="overlay" hidden>
         <div class="fx-wrap">
           <span class="lock-ring"></span>
@@ -1287,6 +1314,17 @@
 
   /* ---------- server state (CONTRACT.md) ---------- */
   let seenState = false;
+  let todosKnown = false;
+  function showTodoPop(t) {
+    const pop = $("todoPop");
+    const from = t.from && t.from !== "Me" ? t.from : "";
+    pop.innerHTML = `<span class="ic">📝</span><span><b></b><small></small></span>`;
+    pop.querySelector("b").textContent = t.text;
+    pop.querySelector("small").textContent = from ? `Added to your to-do · from ${from}` : "Added to your to-do";
+    pop.hidden = true; void pop.offsetWidth; pop.hidden = false;
+    clearTimeout(showTodoPop.t);
+    showTodoPop.t = setTimeout(() => { pop.hidden = true; }, 4300);
+  }
   function apply(s) {
     if (typeof s.server_time === "number") skew = s.server_time - Date.now() / 1000;
 
@@ -1304,7 +1342,16 @@
     state.message = s.last_message || null;
     state.digest = s.last_digest || null;
     state.urgent = !!s.urgent_pending;
+    const oldTodoIds = new Set((state.todos || []).map((t) => t.id));
     state.todos = Array.isArray(s.todos) ? s.todos : [];
+    // new to-do while locked (e.g. "Buy bread" from a friend's message) → drop-in card
+    if (todosKnown && state.mode === "locked") {
+      const fresh = state.todos.find((t) => !oldTodoIds.has(t.id) && !t.done);
+      if (fresh) showTodoPop(fresh);
+    }
+    todosKnown = true;
+    // urgent → huge bouncing arrow at the red card
+    $("urgentArrow").hidden = !(state.mode === "locked" && state.urgent && state.message && state.message.urgent);
     state.secondsLeft = state.endsAt ? Math.max(0, Math.ceil(state.endsAt - nowS())) : 0;
     state.linked = true;
     state.lastSync = new Date();
