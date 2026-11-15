@@ -1,490 +1,726 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=800, height=480">
 <title>Lock In</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap">
 <style>
-  :root {
-    --ink: #111211;
-    --panel: #1b1c1a;
-    --panel-2: #242522;
-    --line: #34362f;
-    --paper: #f4f5f1;
-    --muted: #9a9d92;
-    --signal: #e7483f;
-    --moss: #7fa07f;
-    --cyan: #00c2bd;
-    --amber: #f2b33d;
-    --display: "Archivo Black", "Arial Black", system-ui, sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    --sans: Inter, system-ui, -apple-system, sans-serif;
-    --u: min(1vw, 1.6667vh); /* 1u = 8px on an 800x480 screen, scales to any size */
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--paper);
-    font-family: var(--sans); user-select: none; -webkit-user-select: none; touch-action: manipulation; overscroll-behavior: none; }
-  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
-  .mono { font-family: var(--mono); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-
-  #app { position: fixed; inset: 0; padding: calc(2.4 * var(--u)) calc(3 * var(--u)); display: flex; flex-direction: column; }
-  .view { display: none; flex: 1; min-height: 0; flex-direction: column; gap: calc(1.6 * var(--u)); }
-  body.idle #idle, body.locked #locked { display: flex; }
-
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: calc(1.4 * var(--u)); padding: calc(1.6 * var(--u)) calc(2 * var(--u)); min-height: 0; }
-  .card h3 { margin: 0 0 calc(1 * var(--u)); font: 600 calc(1.4 * var(--u)) var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
-
-  /* ---------- IDLE ---------- */
-  .idle-top { display: flex; align-items: center; gap: calc(2.4 * var(--u)); }
-  .clock { font: 400 calc(11 * var(--u))/0.9 var(--display); letter-spacing: -.01em; }
-  .date { font-size: calc(2.2 * var(--u)); color: var(--muted); line-height: 1.3; }
-  .date b { display: block; color: var(--paper); font-weight: 600; }
-  .idle-top .face-wrap { margin-left: auto; width: calc(17 * var(--u)); }
-  .idle-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: calc(1.6 * var(--u)); }
-  .idle-right { display: flex; flex-direction: column; gap: calc(1.6 * var(--u)); min-height: 0; }
-
-  .todos { overflow: hidden; display: flex; flex-direction: column; }
-  .todos ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-  .todos li { display: flex; align-items: center; gap: calc(1.2 * var(--u)); padding: calc(1 * var(--u)) 0; border-bottom: 1px solid var(--line); font-size: calc(2.1 * var(--u)); }
-  .todos li:last-child { border-bottom: 0; }
-  .check { flex: none; width: calc(3.2 * var(--u)); height: calc(3.2 * var(--u)); border: 2px solid var(--muted); border-radius: calc(.8 * var(--u)); display: grid; place-items: center; }
-  .todos li.done .check { background: var(--moss); border-color: var(--moss); }
-  .todos li.done .check::after { content: "✓"; color: var(--ink); font-weight: 700; font-size: calc(2 * var(--u)); }
-  .todos li.done .t { text-decoration: line-through; color: var(--muted); }
-  .todos .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .todos .from { font: 600 calc(1.2 * var(--u)) var(--mono); color: var(--cyan); text-transform: uppercase; margin-left: calc(.6 * var(--u)); }
-  .todos .x { flex: none; width: calc(4 * var(--u)); height: calc(4 * var(--u)); color: var(--muted); font-size: calc(2.4 * var(--u)); }
-  .empty { color: var(--muted); font-size: calc(1.8 * var(--u)); }
-
-  .music .row { display: flex; align-items: center; gap: calc(1.2 * var(--u)); }
-  .music .title { flex: 1; min-width: 0; font-weight: 600; font-size: calc(2 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ctrl { width: calc(5.6 * var(--u)); height: calc(5.6 * var(--u)); border-radius: 50%; background: var(--panel-2); display: grid; place-items: center; font-size: calc(2.2 * var(--u)); }
-  .ctrl.play { background: var(--paper); color: var(--ink); }
-  .music input[type=range] { width: 100%; margin-top: calc(1.2 * var(--u)); accent-color: var(--cyan); }
-
-  .alarm .row { display: flex; align-items: center; gap: calc(1 * var(--u)); }
-  .alarm .time { font: 400 calc(4.4 * var(--u)) var(--display); min-width: calc(15 * var(--u)); text-align: center; }
-  .alarm .step { width: calc(4.6 * var(--u)); height: calc(4.6 * var(--u)); border-radius: calc(1 * var(--u)); background: var(--panel-2); font-size: calc(2 * var(--u)); font-weight: 700; }
-  .toggle { margin-left: auto; padding: calc(1 * var(--u)) calc(1.8 * var(--u)); border-radius: 99px; background: var(--panel-2); font: 600 calc(1.5 * var(--u)) var(--mono); }
-  .toggle.on { background: var(--amber); color: var(--ink); }
-
-  .start { display: flex; align-items: center; gap: calc(1.2 * var(--u)); }
-  .start .label { font: 400 calc(2.6 * var(--u)) var(--display); margin-right: calc(.8 * var(--u)); }
-  .start button.go { flex: 1; height: calc(7.4 * var(--u)); border-radius: calc(1.4 * var(--u)); background: var(--paper); color: var(--ink); font: 400 calc(2.8 * var(--u)) var(--display); }
-  .start button.go.demo { background: var(--signal); color: var(--paper); }
-  .start button.go:active, .ctrl:active, .step:active { transform: scale(.96); }
-  .gear { width: calc(7.4 * var(--u)); height: calc(7.4 * var(--u)); border-radius: calc(1.4 * var(--u)); background: var(--panel); border: 1px solid var(--line); font-size: calc(3 * var(--u)); color: var(--muted); display: grid; place-items: center; text-decoration: none; }
-
-  /* ---------- LOCKED ---------- */
-  .locked-top { display: flex; align-items: center; justify-content: space-between; font: 600 calc(1.6 * var(--u)) var(--mono); letter-spacing: .1em; text-transform: uppercase; }
-  .locked-top .tag { color: var(--signal); display: flex; align-items: center; gap: calc(1 * var(--u)); }
-  .locked-top .tag::before { content: ""; width: calc(1.2 * var(--u)); height: calc(1.2 * var(--u)); border-radius: 50%; background: var(--signal); animation: pulse 1.6s infinite; }
-  @keyframes pulse { 50% { opacity: .25; } }
-  .exits { display: flex; align-items: center; gap: calc(.7 * var(--u)); color: var(--muted); }
-  .exits i { width: calc(1.4 * var(--u)); height: calc(1.4 * var(--u)); border-radius: 50%; border: 2px solid var(--muted); }
-  .exits i.left { background: var(--paper); border-color: var(--paper); }
-  .locked-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 40% 1fr; gap: calc(2.4 * var(--u)); align-items: center; }
-  .count { display: flex; flex-direction: column; gap: calc(1 * var(--u)); }
-  .countdown { font: 400 calc(15 * var(--u))/0.85 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .until { color: var(--muted); font-size: calc(2.2 * var(--u)); }
-  .bar { height: calc(1.2 * var(--u)); background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-top: calc(.6 * var(--u)); }
-  .bar div { height: 100%; width: 0; background: var(--signal); transition: width 1s linear; }
-  .locked-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.6 * var(--u)); min-height: calc(13 * var(--u)); }
-  .msg .text, .digest .text { font-size: calc(1.9 * var(--u)); line-height: 1.35; max-height: calc(8 * var(--u)); overflow: hidden; }
-  .digest .text { white-space: pre-line; font-size: calc(1.7 * var(--u)); }
-  .msg .who { color: var(--cyan); }
-  .msg.urgent { background: var(--signal); border-color: var(--signal); }
-  .msg.urgent h3, .msg.urgent .who { color: var(--paper); }
-  .free { margin-top: calc(1 * var(--u)); width: 100%; height: calc(5.4 * var(--u)); border-radius: calc(1 * var(--u)); background: var(--paper); color: var(--signal); font: 400 calc(2.2 * var(--u)) var(--display); display: none; }
-  .msg.urgent .free { display: block; }
-  .locked-foot { display: flex; gap: calc(1.6 * var(--u)); align-items: stretch; }
-  .locked-foot .slot { flex: 1; }
-  .locked-foot .music { padding: calc(1 * var(--u)) calc(1.6 * var(--u)); }
-  .locked-foot .music h3, .locked-foot .music input { display: none; }
-  .locked-foot .ctrl { width: calc(4.6 * var(--u)); height: calc(4.6 * var(--u)); }
-  .hold { position: relative; overflow: hidden; padding: 0 calc(2 * var(--u)); border-radius: calc(1.4 * var(--u)); border: 1px solid var(--line); color: var(--muted); font: 600 calc(1.4 * var(--u)) var(--mono); text-transform: uppercase; letter-spacing: .06em; }
-  .hold span { position: relative; z-index: 1; }
-  .hold::before { content: ""; position: absolute; inset: 0; width: var(--p, 0%); background: var(--signal); }
-
-  /* ---------- FACE ---------- */
-  .face-wrap { aspect-ratio: 200 / 150; width: 100%; }
-  .face { width: 100%; height: 100%; overflow: visible; }
-  .face .head { fill: var(--panel); stroke: var(--line); stroke-width: 3; }
-  .face .eyes { animation: blink 5s infinite; transform-box: fill-box; transform-origin: center; }
-  .face .look { animation: look 9s ease-in-out infinite; }
-  .face .eye { fill: var(--paper); transform-box: fill-box; transform-origin: center; transition: transform .4s; }
-  .face .brow { stroke: var(--paper); stroke-width: 6; stroke-linecap: round; fill: none; opacity: 0; transition: opacity .3s, d .4s; }
-  .face .mouth { stroke: var(--paper); stroke-width: 7; stroke-linecap: round; fill: none; transition: d .4s; d: path("M70 104 Q100 128 130 104"); }
-  .face .cheek { fill: var(--signal); opacity: 0; transition: opacity .4s; }
-  @keyframes blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.1); } }
-  @keyframes look { 0%, 20%, 100% { transform: translateX(0); } 30%, 45% { transform: translateX(-7px); } 60%, 75% { transform: translateX(7px); } }
-  .face.focused .eye { transform: scaleY(.45); }
-  .face.focused .mouth { d: path("M80 108 Q100 110 120 108"); }
-  .face.focused .look { animation: none; }
-  .face.worried .brow { opacity: 1; }
-  .face.worried .brow.l { d: path("M50 38 L80 27"); }
-  .face.worried .brow.r { d: path("M150 38 L120 27"); }
-  .face.worried .mouth { d: path("M86 112 Q100 100 114 112"); }
-  .face.sad .eye { transform: scaleY(.7) translateY(4px); }
-  .face.sad .brow { opacity: 1; }
-  .face.sad .brow.l { d: path("M50 40 L80 30"); }
-  .face.sad .brow.r { d: path("M150 40 L120 30"); }
-  .face.sad .mouth { d: path("M72 118 Q100 94 128 118"); }
-  .face.proud .eye { transform: scaleY(.25); }
-  .face.proud .mouth { d: path("M62 98 Q100 138 138 98"); }
-  .face.proud .cheek, .face.happy .cheek { opacity: .55; }
-  .face.sad .look, .face.worried .look { animation: none; }
-
-  /* ---------- overlays ---------- */
-  #overlay { position: fixed; inset: 0; background: rgba(17,18,17,.94); display: none; align-items: center; justify-content: center; z-index: 10; padding: calc(4 * var(--u)); }
-  #overlay.show { display: flex; }
-  #overlay .box { max-width: calc(80 * var(--u)); text-align: center; }
-  #overlay h2 { margin: 0 0 calc(1.6 * var(--u)); font: 400 calc(6 * var(--u))/1 var(--display); }
-  #overlay p { margin: 0 0 calc(2.4 * var(--u)); font-size: calc(2.4 * var(--u)); line-height: 1.45; color: #d6d8d0; white-space: pre-line; }
-  #overlay button { padding: calc(1.6 * var(--u)) calc(5 * var(--u)); border-radius: 99px; background: var(--paper); color: var(--ink); font: 400 calc(2.4 * var(--u)) var(--display); }
-  #toast { position: fixed; left: 50%; bottom: calc(3 * var(--u)); transform: translate(-50%, 40%); opacity: 0; visibility: hidden; background: var(--signal); color: var(--paper); padding: calc(1.4 * var(--u)) calc(2.6 * var(--u)); border-radius: 99px; font-weight: 600; font-size: calc(2 * var(--u)); transition: transform .3s, opacity .3s, visibility .3s; z-index: 20; }
-  #toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
-  #offline { position: fixed; top: calc(1 * var(--u)); right: calc(1 * var(--u)); font: 600 calc(1.3 * var(--u)) var(--mono); color: var(--amber); display: none; }
-  body.offline #offline { display: block; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;display:grid;place-items:center;overflow:hidden;background:#000;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,system-ui,sans-serif;
+  user-select:none;-webkit-tap-highlight-color:transparent;
+  --bg:#000;--surface:#1c1c1e;--raised:#2c2c2e;--text:#fff;--muted:#8e8e93;
+  --line:rgba(255,255,255,.09);--red:#ff453a;--blue:#0a84ff;--green:#30d158;--orange:#ff9f0a;
+  --frame-shadow:0 24px 70px rgba(0,0,0,.65)
+}
+html[data-theme="light"] body{
+  --bg:#f2f2f7;--surface:#fff;--raised:#f2f2f7;--text:#000;--muted:#6e6e73;
+  --line:rgba(0,0,0,.09);--red:#ff3b30;--blue:#007aff;--green:#34c759;--orange:#ff9500;
+  --frame-shadow:0 24px 60px rgba(0,0,0,.16)
+}
+.frame{
+  position:relative;width:800px;height:480px;border-radius:26px;overflow:hidden;
+  background:var(--bg);color:var(--text);box-shadow:var(--frame-shadow);
+  display:flex;flex-direction:column
+}
+/* ---------- header ---------- */
+.bar{height:54px;flex:0 0 54px;display:flex;align-items:center;gap:14px;padding:0 20px 0 24px}
+.brand{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transform:scale(1)}
+.dot.ok{background:var(--green)}
+.dot.bad{background:var(--red)}
+.tabs{display:flex;gap:2px;margin-left:auto;padding:3px;border-radius:11px;background:var(--surface)}
+.tabs button{
+  appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:500;
+  padding:5px 13px;border-radius:8px;cursor:pointer;transition:color .12s linear
+}
+.tabs button.on{background:var(--raised);color:var(--text)}
+.icons{display:flex;gap:2px;margin-left:6px}
+.icon{position:relative}
+.ib{appearance:none;border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:9px;display:grid;place-items:center;cursor:pointer}
+.ib:active{background:var(--surface)}
+.ib svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pop{
+  position:absolute;top:37px;right:0;width:252px;background:var(--raised);color:var(--text);
+  border-radius:15px;padding:12px;display:none;z-index:60;box-shadow:0 16px 36px rgba(0,0,0,.45);
+  border:1px solid var(--line)
+}
+html[data-theme="light"] .pop{background:#fff}
+.pop.show{display:block}
+.pop h4{margin:0 0 8px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.pop .rowline{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0}
+.pop .rowline b{font-weight:500;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop .muted,.muted{color:var(--muted)}
+.pop p{margin:6px 0 0;font-size:12px;line-height:1.4}
+.mini{
+  appearance:none;border:0;font:inherit;font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:8px;
+  background:var(--blue);color:#fff;cursor:pointer;white-space:nowrap
+}
+.mini.ghost{background:transparent;color:var(--blue);border:1px solid var(--line)}
+.banner .mini{background:var(--red);align-self:center;padding:7px 11px}
+.seg{display:flex;gap:2px;background:var(--surface);padding:3px;border-radius:9px;margin-top:2px}
+.seg button{flex:1;appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:5px;border-radius:7px;cursor:pointer}
+html[data-theme="light"] .seg{background:var(--bg)}
+.seg button.on{background:var(--blue);color:#fff}
+/* ---------- views ---------- */
+main{position:relative;flex:1;min-height:0}
+.view{position:absolute;inset:0;padding:2px 22px 18px;display:none;flex-direction:column;min-height:0}
+.view.on{display:flex}
+.only-idle,.only-locked{display:flex;flex-direction:column;min-height:0;flex:1}
+body[data-mode="locked"] .only-idle{display:none}
+body[data-mode="idle"] .only-locked{display:none}
+/* idle */
+.clock{font-size:128px;font-weight:700;letter-spacing:-.045em;line-height:.98;text-align:center;margin-top:6px;font-variant-numeric:tabular-nums}
+.date{text-align:center;color:var(--muted);font-size:12.5px;margin-top:4px;letter-spacing:.01em}
+.controls{margin-top:auto;display:flex;gap:8px;align-items:stretch;justify-content:center}
+.pills{display:flex;gap:6px;background:var(--surface);padding:4px;border-radius:14px}
+.pills button{
+  appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:500;
+  height:36px;min-width:48px;border-radius:10px;cursor:pointer;padding:0 8px;font-variant-numeric:tabular-nums
+}
+.pills button.on{background:var(--raised);color:var(--text)}
+html[data-theme="light"] .pills button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.lock{
+  appearance:none;border:0;font:inherit;font-size:14px;font-weight:600;color:#fff;background:var(--blue);
+  height:44px;padding:0 24px;border-radius:14px;cursor:pointer;letter-spacing:-.01em
+}
+.lock:disabled{opacity:.35;cursor:default}
+.hint{text-align:center;color:var(--muted);font-size:11.5px;margin-top:9px;height:14px}
+/* locked */
+.count{font-size:104px;font-weight:700;letter-spacing:-.04em;line-height:1;text-align:center;margin-top:8px;font-variant-numeric:tabular-nums}
+.sub{text-align:center;color:var(--muted);font-size:12.5px;margin-top:8px}
+.prog{height:3px;border-radius:2px;background:var(--surface);margin:12px 0 0;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--blue);border-radius:2px}
+.banner{
+  margin-top:12px;border-radius:13px;padding:9px 11px;font-size:12.5px;line-height:1.35;
+  background:var(--surface);border:1px solid var(--line);display:flex;gap:10px;align-items:flex-start
+}
+.banner.urgent{background:rgba(255,69,58,.13);border-color:rgba(255,69,58,.35)}
+.banner .who{font-weight:600;margin-right:4px}
+.banner .txt{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.banner .mini{flex:0 0 auto}
+.digest{
+  margin-top:9px;color:var(--muted);font-size:11.5px;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
+}
+.lower{margin-top:auto;display:flex;flex-direction:column;min-height:0}
+.hold{
+  position:relative;margin-top:12px;height:46px;border:0;border-radius:14px;background:var(--surface);
+  color:var(--text);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;overflow:hidden
+}
+.hold span{position:relative;z-index:2}
+.hold::before{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--p,0%);background:rgba(255,69,58,.42);z-index:1}
+.hold.dead{color:var(--muted)}
+/* lists */
+.vhead{display:flex;align-items:baseline;justify-content:space-between;margin:2px 0 10px}
+.vhead h2{margin:0;font-size:19px;font-weight:600;letter-spacing:-.02em}
+.vhead .muted{font-size:11.5px}
+.list{list-style:none;margin:0;padding:0;overflow-y:auto;min-height:0;flex:1;display:flex;flex-direction:column;gap:6px;scrollbar-width:none}
+.list::-webkit-scrollbar{display:none}
+.list li{
+  display:flex;align-items:center;gap:11px;background:var(--surface);border-radius:12px;
+  padding:11px 12px;font-size:13.5px;min-height:46px
+}
+.list li.done .t{color:var(--muted);text-decoration:line-through}
+.check{
+  appearance:none;flex:0 0 20px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--muted);
+  background:transparent;cursor:pointer;position:relative
+}
+li.done .check{background:var(--blue);border-color:var(--blue)}
+li.done .check::after{content:"";position:absolute;left:6px;top:2.5px;width:5px;height:9px;border:2px solid #fff;border-top:0;border-left:0;transform:rotate(43deg)}
+.list .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.list .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .from{font-size:10.5px;color:var(--muted);letter-spacing:.01em}
+.list .from:empty{display:none}
+.x{appearance:none;border:0;background:transparent;color:var(--muted);font-size:17px;line-height:1;padding:4px 2px;cursor:pointer}
+.list li.empty{background:transparent;color:var(--muted);font-size:12.5px;justify-content:center;text-align:center}
+/* weather */
+.wnow{display:flex;align-items:flex-start;gap:14px;margin-top:6px}
+.temp{font-size:66px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.wside{padding-top:8px}
+.cond{font-size:15px;font-weight:500}
+.place{color:var(--muted);font-size:12px;margin-top:2px}
+.wmeta{margin-top:auto;display:flex;gap:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.wmeta b{color:var(--text);font-weight:600}
+/* sound */
+.snd{appearance:none;border:0;background:transparent;color:var(--text);font:inherit;font-size:13.5px;text-align:left;flex:1;cursor:pointer;padding:0}
+.list li.playing{background:rgba(10,132,255,.16)}
+.list li.playing .sub{color:var(--blue)}
+.badge{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 5px;white-space:nowrap}
+.playdot{width:20px;height:20px;border-radius:50%;background:var(--raised);display:grid;place-items:center;font-size:9px;color:var(--muted)}
+li.playing .playdot{background:var(--blue);color:#fff}
+/* toast */
+.toast{
+  position:absolute;left:50%;bottom:22px;transform:translate(-50%,10px);opacity:0;pointer-events:none;
+  background:var(--raised);color:var(--text);border:1px solid var(--line);border-radius:12px;
+  padding:9px 14px;font-size:12.5px;max-width:560px;text-align:center;z-index:90;
+  transition:opacity .16s linear,transform .16s linear;box-shadow:0 10px 26px rgba(0,0,0,.4)
+}
+html[data-theme="light"] .toast{background:#fff}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
-<body class="idle">
-<div id="app">
+<body data-mode="idle">
+<div class="frame" id="frame">
 
-  <!-- =================== IDLE =================== -->
-  <section class="view" id="idle">
-    <div class="idle-top">
-      <div class="clock" id="clock">--:--</div>
-      <div class="date" id="date"></div>
-      <div class="face-wrap" data-face></div>
-    </div>
-    <div class="idle-grid">
-      <div class="card todos">
-        <h3><span>To-do</span><span id="todoCount"></span></h3>
-        <ul id="todoList"></ul>
+  <header class="bar">
+    <div class="brand"><i class="dot" id="dot"></i>Lock In</div>
+    <nav class="tabs" id="tabs">
+      <button data-view="home" class="on">Home</button>
+      <button data-view="todo">To-do</button>
+      <button data-view="weather">Weather</button>
+      <button data-view="music">Music</button>
+    </nav>
+    <div class="icons">
+      <div class="icon">
+        <button class="ib" id="btnWifi" aria-label="Wi-Fi">
+          <svg viewBox="0 0 24 24"><path d="M2.5 8.5a15 15 0 0 1 19 0"/><path d="M5.6 12a10.5 10.5 0 0 1 12.8 0"/><path d="M9 15.5a5.5 5.5 0 0 1 6 0"/><circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/></svg>
+        </button>
+        <div class="pop" id="popWifi">
+          <h4>Wi-Fi</h4>
+          <div class="rowline"><span class="muted">Network</span><b id="wifiSsid">—</b></div>
+          <div class="rowline"><span class="muted">Address</span><b id="wifiIp">—</b></div>
+          <div class="rowline"><span class="muted">Host</span><b id="wifiHost">—</b></div>
+        </div>
       </div>
-      <div class="idle-right">
-        <div id="idleMusicSlot"></div>
-        <div class="card alarm">
-          <h3><span>Alarm</span></h3>
-          <div class="row">
-            <button class="step" data-alarm="-60">−h</button>
-            <button class="step" data-alarm="-5">−5</button>
-            <div class="time" id="alarmTime">07:30</div>
-            <button class="step" data-alarm="5">+5</button>
-            <button class="step" data-alarm="60">+h</button>
-            <button class="toggle" id="alarmToggle">OFF</button>
+      <div class="icon">
+        <button class="ib" id="btnBt" aria-label="Bluetooth">
+          <svg viewBox="0 0 24 24"><path d="M7 7.5 17 16.5 12 21V3l5 4.5L7 16.5"/></svg>
+        </button>
+        <div class="pop" id="popBt">
+          <h4>Bluetooth audio</h4>
+          <div id="btBody"><p class="muted">Checking…</p></div>
+          <button class="mini ghost" id="btScan" style="margin-top:9px">Scan for devices</button>
+        </div>
+      </div>
+      <div class="icon">
+        <button class="ib" id="btnLink" aria-label="Connection">
+          <svg viewBox="0 0 24 24"><path d="M10 13.5a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7L11.4 6.4"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1.2-1.2"/></svg>
+        </button>
+        <div class="pop" id="popLink">
+          <h4>Connection</h4>
+          <div class="rowline"><span class="muted">Pi</span><b id="linkOrigin">—</b></div>
+          <div class="rowline"><span class="muted">Status</span><b id="linkState">—</b></div>
+          <div class="rowline"><span class="muted">Last sync</span><b id="linkSync">—</b></div>
+          <div class="rowline"><span class="muted">Session</span><b id="linkSession">—</b></div>
+        </div>
+      </div>
+      <div class="icon">
+        <button class="ib" id="btnGear" aria-label="Appearance">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M4.3 7.5l2.1 1.2M17.6 15.3l2.1 1.2M4.3 16.5l2.1-1.2M17.6 8.7l2.1-1.2"/></svg>
+        </button>
+        <div class="pop" id="popGear">
+          <h4>Appearance</h4>
+          <div class="seg" id="themeSeg">
+            <button data-theme="dark">Dark</button>
+            <button data-theme="light">Light</button>
           </div>
+          <p class="muted">800 × 480 · Pi 4</p>
         </div>
       </div>
     </div>
-    <div class="start">
-      <span class="label">Lock in</span>
-      <button class="go demo" data-min="1">1 min</button>
-      <button class="go" data-min="25">25 min</button>
-      <button class="go" data-min="50">50 min</button>
-      <a class="gear" href="/setup" title="Setup">⚙</a>
-    </div>
-  </section>
+  </header>
 
-  <!-- =================== LOCKED =================== -->
-  <section class="view" id="locked">
-    <div class="locked-top">
-      <span class="tag">Locked in</span>
-      <span class="exits" id="exits"></span>
-    </div>
-    <div class="locked-main">
-      <div class="face-wrap" data-face></div>
-      <div class="count">
-        <div class="countdown" id="countdown">00:00</div>
-        <div class="until" id="until"></div>
-        <div class="bar"><div id="bar"></div></div>
+  <main>
+    <!-- HOME -->
+    <section class="view on" id="v-home">
+      <div class="only-idle">
+        <div class="clock" id="clock">--:--</div>
+        <div class="date" id="date"></div>
+        <div class="controls">
+          <div class="pills" id="pills">
+            <button data-min="1">1m</button>
+            <button data-min="15">15m</button>
+            <button data-min="25" class="on">25m</button>
+            <button data-min="30">30m</button>
+            <button data-min="45">45m</button>
+            <button data-min="60">60m</button>
+          </div>
+          <button class="lock" id="lockBtn">Lock In</button>
+        </div>
+        <div class="hint" id="lockHint">Phone in the box. Close the lid, then lock in.</div>
       </div>
-    </div>
-    <div class="locked-bottom">
-      <div class="card msg" id="msg">
-        <h3><span id="msgTitle">Messages</span></h3>
-        <div class="text" id="msgText"><span class="empty">Your agent is answering for you.</span></div>
-        <button class="free" id="freeBtn">Unlock free</button>
+
+      <div class="only-locked">
+        <div class="count" id="count">--:--</div>
+        <div class="sub" id="until"></div>
+        <div class="prog"><i id="prog"></i></div>
+        <div class="lower">
+          <div class="banner" id="banner" hidden>
+            <span class="txt"><span class="who" id="bannerWho"></span><span id="bannerText"></span></span>
+            <button class="mini" id="freeBtn" hidden>Unlock free</button>
+          </div>
+          <div class="digest" id="digest" hidden></div>
+          <button class="hold" id="hold"><span>Hold 3s · emergency exit</span></button>
+        </div>
       </div>
-      <div class="card digest">
-        <h3><span>Digest</span><span id="digestAge"></span></h3>
-        <div class="text" id="digestText"><span class="empty">A summary lands here every few minutes if something matters.</span></div>
+    </section>
+
+    <!-- TO-DO -->
+    <section class="view" id="v-todo">
+      <div class="vhead"><h2>To-do</h2><span class="muted" id="todoCount"></span></div>
+      <ul class="list" id="todoList"></ul>
+    </section>
+
+    <!-- WEATHER -->
+    <section class="view" id="v-weather">
+      <div class="vhead"><h2>Weather</h2><span class="muted" id="wUpdated"></span></div>
+      <div class="wnow">
+        <div class="temp" id="wTemp">—</div>
+        <div class="wside">
+          <div class="cond" id="wCond">Loading…</div>
+          <div class="place" id="wPlace"></div>
+        </div>
       </div>
-    </div>
-    <div class="locked-foot">
-      <div class="slot" id="lockedMusicSlot"></div>
-      <button class="hold" id="holdBtn"><span>Hold for emergency exit</span></button>
-    </div>
-  </section>
+      <div class="wmeta">
+        <span id="wMeta">—</span>
+        <span id="wRow" style="margin-left:auto">—</span>
+      </div>
+    </section>
+
+    <!-- MUSIC -->
+    <section class="view" id="v-music">
+      <div class="vhead"><h2>Music</h2><span class="muted" id="musicNote"></span></div>
+      <ul class="list" id="musicList"></ul>
+    </section>
+
+    <div class="toast" id="toast"></div>
+  </main>
 </div>
 
-<!-- music card: moved between the idle and locked slots, so playback never stops -->
-<template id="musicTpl">
-  <div class="card music" id="music">
-    <h3><span>Music</span><span id="trackNo"></span></h3>
-    <div class="row">
-      <div class="title" id="trackTitle">No music yet</div>
-      <button class="ctrl" id="prevBtn">⏮</button>
-      <button class="ctrl play" id="playBtn">▶</button>
-      <button class="ctrl" id="nextBtn">⏭</button>
-    </div>
-    <input type="range" id="volume" min="0" max="1" step="0.05" value="0.7">
-  </div>
-</template>
-
-<template id="faceTpl">
-  <svg class="face happy" viewBox="0 0 200 150" aria-hidden="true">
-    <rect class="head" x="6" y="6" width="188" height="138" rx="34"/>
-    <g class="look">
-      <g class="eyes">
-        <rect class="eye" x="54" y="44" width="26" height="36" rx="13"/>
-        <rect class="eye" x="120" y="44" width="26" height="36" rx="13"/>
-      </g>
-      <path class="brow l" d="M48 34 L80 34"/>
-      <path class="brow r" d="M152 34 L120 34"/>
-    </g>
-    <circle class="cheek" cx="40" cy="98" r="10"/>
-    <circle class="cheek" cx="160" cy="98" r="10"/>
-    <path class="mouth"/>
-  </svg>
-</template>
-
-<div id="overlay"><div class="box"><h2 id="ovTitle"></h2><p id="ovText"></p><button id="ovBtn">Got it</button></div></div>
-<div id="toast"></div>
-<div id="offline">PI SERVER OFFLINE</div>
-
 <script>
-const $ = (s) => document.querySelector(s);
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+let S = null;            // last /state
+let skew = 0;            // server_time - local clock
+let reachable = true;
+let lastSync = 0;
+let seenFinal = null;
+const nowS = () => Date.now() / 1000 + skew;
 const pad = (n) => String(n).padStart(2, "0");
-let S = null;               // last state from the Pi
-let offset = 0;             // server clock minus browser clock (seconds)
-let lastMode = null;
-let lastTodosKey = "";
-let seenFinalDigestAt = 0;
-const nowS = () => Date.now() / 1000 + offset;
+const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const ago = (at) => { const s = Math.max(0, Math.round(nowS() - at)); return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`; };
+function mmss(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
 
-// ---------- storage (never trusted to work) ----------
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+}
 
-// ---------- API ----------
 async function api(path, opts = {}) {
   const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.detail || r.statusText);
+  let data = null;
+  try { data = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error((data && data.detail) || `Request failed (${r.status})`);
   return data;
 }
-const post = (path, body) => api(path, { method: "POST", body: JSON.stringify(body || {}) });
+const post = (p, b) => api(p, { method: "POST", body: JSON.stringify(b || {}) });
 
-function toast(text) {
-  const t = $("#toast"); t.textContent = text; t.classList.add("show");
-  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600);
+/* ---------------- sound ---------------- */
+let actx = null;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (actx.state === "suspended") actx.resume().catch(() => {});
+  return actx;
+}
+function chime(kind) {
+  const c = audio(); if (!c) return;
+  const notes = kind === "lock" ? [440, 330] : kind === "alert" ? [880, 0, 880] : [523, 659, 784];
+  notes.forEach((f, i) => {
+    if (!f) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = kind === "alert" ? "triangle" : "sine";
+    o.frequency.value = f;
+    const t = c.currentTime + i * 0.14;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + 0.55);
+  });
 }
 
-// ---------- sound (WebAudio, no files needed) ----------
-let ctx;
-function audio() { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; }
-function tone(freq, start, dur, vol = 0.18, type = "sine") {
-  const a = audio(), o = a.createOscillator(), g = a.createGain();
-  o.type = type; o.frequency.value = freq; o.connect(g); g.connect(a.destination);
-  const t = a.currentTime + start;
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.start(t); o.stop(t + dur + 0.05);
-}
-const sounds = {
-  lock() { tone(440, 0, .15, .2, "square"); tone(330, .12, .25, .2, "square"); },
-  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .14, .5)); },
-  alert() { [880, 0, 880].forEach((f, i) => f && tone(f, i * .18, .16, .22, "triangle")); },
-};
-document.addEventListener("pointerdown", () => audio(), { once: true });
+/* ---------------- render ---------------- */
+const FACES = { happy: "Happy", focused: "Focused", worried: "Needs you", sad: "Struggling", proud: "Session done" };
 
-// ---------- face ----------
-document.querySelectorAll("[data-face]").forEach((el) => el.appendChild($("#faceTpl").content.cloneNode(true)));
-function setFace(mood) { document.querySelectorAll(".face").forEach((f) => (f.className.baseVal = "face " + mood)); }
+function render(s) {
+  S = s;
+  if (s.server_time) skew = s.server_time - Date.now() / 1000;
+  reachable = true; lastSync = Date.now();
+  $("#dot").className = "dot ok";
+  document.body.dataset.mode = s.mode === "locked" ? "locked" : "idle";
 
-// ---------- music ----------
-$("#idleMusicSlot").appendChild($("#musicTpl").content.cloneNode(true));
-const player = new Audio();
-let tracks = [], ti = 0;
-player.volume = store.get("lockin_volume", 0.7);
-$("#volume").value = player.volume;
-async function loadTracks() {
-  try { tracks = await api("/music"); } catch { tracks = []; }
-  showTrack();
-}
-function showTrack() {
-  $("#trackTitle").textContent = tracks.length ? tracks[ti].title : "Add MP3s to pi/static/music";
-  $("#trackNo").textContent = tracks.length ? `${ti + 1}/${tracks.length}` : "";
-  $("#playBtn").textContent = player.paused ? "▶" : "❚❚";
-}
-function playIdx(i) {
-  if (!tracks.length) return;
-  ti = (i + tracks.length) % tracks.length;
-  player.src = tracks[ti].url; player.play().catch(() => {}); showTrack();
-}
-$("#playBtn").onclick = () => {
-  if (!tracks.length) return toast("No music in pi/static/music yet");
-  if (!player.src) return playIdx(ti);
-  player.paused ? player.play() : player.pause();
-};
-$("#prevBtn").onclick = () => playIdx(ti - 1);
-$("#nextBtn").onclick = () => playIdx(ti + 1);
-$("#volume").oninput = (e) => { player.volume = +e.target.value; store.set("lockin_volume", player.volume); };
-player.onended = () => playIdx(ti + 1);
-player.onplay = player.onpause = showTrack;
+  const end = s.ends_at ? new Date(s.ends_at * 1000) : null;
+  $("#until").textContent = end
+    ? `until ${hhmm(end)} · ${s.exits_left} of ${s.max_exits} exits · ${FACES[s.face] || "Focused"}`
+    : "";
 
-// ---------- alarm ----------
-let alarm = store.get("lockin_alarm", { on: false, mins: 7 * 60 + 30 });
-let alarmRungKey = "", alarmBeep = null;
-function showAlarm() {
-  $("#alarmTime").textContent = `${pad(Math.floor(alarm.mins / 60))}:${pad(alarm.mins % 60)}`;
-  const t = $("#alarmToggle"); t.textContent = alarm.on ? "ON" : "OFF"; t.classList.toggle("on", alarm.on);
-}
-document.querySelectorAll("[data-alarm]").forEach((b) => (b.onclick = () => {
-  alarm.mins = (alarm.mins + +b.dataset.alarm + 1440) % 1440; store.set("lockin_alarm", alarm); showAlarm();
-}));
-$("#alarmToggle").onclick = () => { alarm.on = !alarm.on; store.set("lockin_alarm", alarm); showAlarm(); };
-function checkAlarm(d) {
-  if (!alarm.on) return;
-  const key = d.toDateString() + alarm.mins;
-  if (d.getHours() * 60 + d.getMinutes() === alarm.mins && alarmRungKey !== key) {
-    alarmRungKey = key;
-    sounds.alert(); alarmBeep = setInterval(sounds.alert, 1200);
-    overlay("Alarm", `It's ${$("#alarmTime").textContent}.`, "Stop", () => { clearInterval(alarmBeep); alarmBeep = null; });
+  const open = !s.lid_closed;
+  $("#lockBtn").disabled = open;
+  $("#lockHint").textContent = open ? "Close the lid to lock in." : "Phone in the box. Close the lid, then lock in.";
+
+  const m = s.last_message, banner = $("#banner");
+  if (m && s.mode === "locked") {
+    banner.hidden = false;
+    const urgent = !!(m.urgent && s.urgent_pending);
+    banner.classList.toggle("urgent", urgent);
+    $("#bannerWho").textContent = m.from + ": ";
+    $("#bannerText").textContent = m.text;
+    $("#freeBtn").hidden = !urgent;
+    if (urgent && banner.dataset.at !== String(m.at)) { banner.dataset.at = m.at; chime("alert"); }
+  } else {
+    banner.hidden = true;
+    delete banner.dataset.at;
   }
+
+  const d = s.last_digest, dig = $("#digest");
+  if (d && s.mode === "locked") { dig.hidden = false; dig.textContent = `${d.text} · ${ago(d.at)}`; }
+  else dig.hidden = true;
+
+  if (s.mode === "idle" && d && d.final && d.at !== seenFinal && nowS() - d.at < 600) {
+    seenFinal = d.at;
+    toast("Session done · " + d.text.slice(0, 90));
+    chime("done");
+  }
+
+  $("#linkState").textContent = "Connected";
+  $("#linkSession").textContent = s.mode === "locked" ? `#${s.session_id}` : "idle";
+  renderTodos(s.todos || []);
+  tick();
 }
 
-// ---------- overlay ----------
-function overlay(title, text, btn, onClose) {
-  $("#ovTitle").textContent = title; $("#ovText").textContent = text; $("#ovBtn").textContent = btn || "Got it";
-  $("#overlay").classList.add("show");
-  $("#ovBtn").onclick = () => { $("#overlay").classList.remove("show"); onClose && onClose(); };
+/* ---------------- clock + countdown ---------------- */
+function tick() {
+  const d = new Date(nowS() * 1000);
+  $("#clock").textContent = hhmm(d);
+  $("#date").textContent = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  if (S && S.mode === "locked" && S.ends_at) {
+    const left = Math.max(0, Math.ceil(S.ends_at - nowS()));
+    $("#count").textContent = mmss(left);
+    const total = Math.max(1, S.ends_at - (S.started_at || S.ends_at - 60));
+    $("#prog").style.width = `${Math.min(100, ((total - left) / total) * 100)}%`;
+  }
+  if (lastSync) $("#linkSync").textContent = ago(lastSync / 1000);
 }
 
-// ---------- start buttons ----------
-document.querySelectorAll("[data-min]").forEach((b) => (b.onclick = async () => {
-  try { render(await post("/lock", { minutes: +b.dataset.min })); }
-  catch (e) { toast(e.message); }
+/* ---------------- actions ---------------- */
+let selected = 25;
+$$("#pills button").forEach((b) => (b.onclick = () => {
+  selected = +b.dataset.min;
+  $$("#pills button").forEach((x) => x.classList.toggle("on", x === b));
 }));
 
-// ---------- urgent free unlock ----------
+async function lockIn() {
+  if (!S || !S.lid_closed) return toast("Close the lid first");
+  $("#lockBtn").disabled = true;
+  try { render(await post("/lock", { minutes: selected })); chime("lock"); }
+  catch (e) { toast(e.message); }
+  finally { $("#lockBtn").disabled = !!(S && !S.lid_closed); }
+}
+$("#lockBtn").onclick = lockIn;
+
 $("#freeBtn").onclick = async () => {
-  try { render(await post("/unlock", { reason: "urgent" })); } catch (e) { toast(e.message); }
+  try { render(await post("/unlock", { reason: "urgent" })); toast("Unlocked for the urgent message."); chime("done"); }
+  catch (e) { toast(e.message); }
 };
 
-// ---------- hold-to-exit (uses 1 emergency exit) ----------
 (() => {
-  const btn = $("#holdBtn"); let start = 0, raf = 0;
+  const btn = $("#hold");
+  let start = 0, raf = 0;
   const reset = () => { cancelAnimationFrame(raf); start = 0; btn.style.setProperty("--p", "0%"); };
   const step = async () => {
-    const p = Math.min(1, (performance.now() - start) / 2000);
+    const p = Math.min(1, (performance.now() - start) / 3000);
     btn.style.setProperty("--p", p * 100 + "%");
     if (p < 1) { raf = requestAnimationFrame(step); return; }
     reset();
-    try { render(await post("/unlock", { reason: "emergency" })); toast(`Emergency exit used. ${S.exits_left} left.`); }
-    catch (e) { toast(e.message); }
+    try {
+      render(await post("/unlock", { reason: "emergency" }));
+      toast(`Emergency exit used. ${S.exits_left} of ${S.max_exits} left.`);
+      chime("done");
+    } catch (e) { toast(e.message); }
   };
-  btn.addEventListener("pointerdown", () => { if (!S || S.exits_left <= 0) return toast("No emergency exits left"); start = performance.now(); raf = requestAnimationFrame(step); });
+  btn.addEventListener("pointerdown", () => {
+    if (S && S.exits_left <= 0) return toast("No emergency exits left");
+    start = performance.now();
+    raf = requestAnimationFrame(step);
+  });
   ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, reset));
 })();
 
-// ---------- to-dos ----------
+/* ---------------- to-dos ---------------- */
+let todoKey = "";
 function renderTodos(todos) {
   const key = JSON.stringify(todos);
-  if (key === lastTodosKey) return;
-  lastTodosKey = key;
-  const ul = $("#todoList"); ul.innerHTML = "";
-  if (!todos.length) { ul.innerHTML = '<li class="empty">Nothing yet. Your agent adds tasks from messages.</li>'; }
+  if (key === todoKey) return;
+  todoKey = key;
+  const ul = $("#todoList");
+  ul.innerHTML = "";
+  if (!todos.length) {
+    ul.innerHTML = '<li class="empty">Nothing yet. Your agent drops tasks here from messages.</li>';
+  }
   todos.slice().reverse().forEach((t) => {
-    const li = document.createElement("li"); if (t.done) li.className = "done";
-    li.innerHTML = `<span class="check"></span><span class="t"></span><button class="x">×</button>`;
+    const li = document.createElement("li");
+    if (t.done) li.classList.add("done");
+    li.innerHTML = '<button class="check" aria-label="Toggle"></button><div class="body"><span class="t"></span><span class="from"></span></div><button class="x" aria-label="Delete">×</button>';
     li.querySelector(".t").textContent = t.text;
-    if (t.from && t.from !== "Me") { const f = document.createElement("span"); f.className = "from"; f.textContent = t.from; li.querySelector(".t").appendChild(f); }
-    li.querySelector(".check").onclick = li.querySelector(".t").onclick = async () => { try { render(await post(`/todo/${t.id}/toggle`)); } catch (e) { toast(e.message); } };
-    li.querySelector(".x").onclick = async () => { try { render(await api(`/todo/${t.id}`, { method: "DELETE" })); } catch (e) { toast(e.message); } };
+    const from = li.querySelector(".from");
+    from.textContent = t.from && t.from !== "Me" ? `from ${t.from}` : "";
+    li.querySelector(".check").onclick = () => toggleTodo(t.id);
+    li.querySelector(".t").onclick = () => toggleTodo(t.id);
+    li.querySelector(".x").onclick = () => removeTodo(t.id);
     ul.appendChild(li);
   });
   const open = todos.filter((t) => !t.done).length;
   $("#todoCount").textContent = todos.length ? `${open} open` : "";
 }
+async function toggleTodo(id) { try { render(await post(`/todo/${id}/toggle`)); } catch (e) { toast(e.message); } }
+async function removeTodo(id) { try { render(await api(`/todo/${id}`, { method: "DELETE" })); } catch (e) { toast(e.message); } }
 
-// ---------- render from state ----------
-function ago(at) { const s = Math.max(0, Math.round(nowS() - at)); return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`; }
-function render(s) {
-  S = s;
-  document.body.classList.remove("offline");
-  const mode = s.mode;
-  if (mode !== lastMode) {
-    document.body.className = mode;
-    const slot = mode === "locked" ? "#lockedMusicSlot" : "#idleMusicSlot";
-    $(slot).appendChild($("#music"));
-    if (lastMode === "idle" && mode === "locked") sounds.lock();
-    if (lastMode === "locked" && mode === "idle") sounds.done();
-    lastMode = mode;
-  }
-  setFace(s.face || "happy");
-  renderTodos(s.todos || []);
-
-  // exits
-  const ex = $("#exits"); ex.innerHTML = "";
-  for (let i = 0; i < s.max_exits; i++) { const d = document.createElement("i"); if (i < s.exits_left) d.className = "left"; ex.appendChild(d); }
-  ex.insertAdjacentText("beforeend", ` ${s.exits_left} exits`);
-
-  // message
-  const m = s.last_message, card = $("#msg");
-  card.classList.toggle("urgent", !!(m && m.urgent && s.urgent_pending));
-  if (m) {
-    $("#msgTitle").textContent = m.urgent ? "Urgent" : "Latest message";
-    $("#msgText").innerHTML = "";
-    const who = document.createElement("b"); who.className = "who"; who.textContent = m.from + ": ";
-    $("#msgText").append(who, document.createTextNode(m.text));
-    if (m.urgent && s.urgent_pending && card.dataset.at !== String(m.at)) { card.dataset.at = m.at; sounds.alert(); }
-  }
-
-  // digest
-  const d = s.last_digest;
-  if (d && mode === "locked") { $("#digestText").textContent = d.text; $("#digestAge").textContent = ago(d.at); }
-  if (mode === "locked" && !d) { $("#digestText").innerHTML = '<span class="empty">A summary lands here every few minutes if something matters.</span>'; $("#digestAge").textContent = ""; }
-  if (mode === "idle" && d && d.final && d.at !== seenFinalDigestAt && nowS() - d.at < 600) {
-    seenFinalDigestAt = d.at;
-    overlay("While you were locked in", d.text, "Nice");
-  }
-}
-
-// ---------- clocks ----------
-function tick() {
-  const d = new Date((nowS()) * 1000);
-  $("#clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  $("#date").innerHTML = `<b>${d.toLocaleDateString("en-US", { weekday: "long" })}</b>${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
-  checkAlarm(d);
-  if (S && S.mode === "locked" && S.ends_at) {
-    const left = Math.max(0, Math.ceil(S.ends_at - nowS()));
-    const h = Math.floor(left / 3600), mm = Math.floor((left % 3600) / 60), ss = left % 60;
-    $("#countdown").textContent = h ? `${h}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
-    const end = new Date(S.ends_at * 1000);
-    $("#until").textContent = `until ${pad(end.getHours())}:${pad(end.getMinutes())} · phone + laptop locked`;
-    const total = S.ends_at - S.started_at;
-    $("#bar").style.width = `${Math.min(100, ((total - left) / total) * 100)}%`;
-  }
-}
-
-async function poll() {
+/* ---------------- weather ---------------- */
+const WMO = { 0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Fog", 51: "Drizzle", 53: "Drizzle", 55: "Drizzle", 61: "Rain", 63: "Rain", 65: "Heavy rain", 71: "Snow", 73: "Snow", 75: "Heavy snow", 80: "Showers", 81: "Showers", 82: "Heavy showers", 95: "Thunderstorm" };
+let weatherAt = 0;
+async function loadWeather() {
+  if (Date.now() - weatherAt < 10 * 60 * 1000) return;
   try {
-    const s = await api("/state");
-    offset = s.server_time - Date.now() / 1000;
-    render(s);
-  } catch { document.body.classList.add("offline"); }
+    let geo = JSON.parse(localStorage.getItem("lockin_geo") || "null");
+    if (!geo || Date.now() - (geo.t || 0) > 24 * 3600 * 1000) {
+      const g = await (await fetch("https://ipapi.co/json/")).json();
+      if (typeof g.latitude !== "number") throw new Error("no location");
+      geo = { lat: g.latitude, lon: g.longitude, city: g.city, region: g.region_code, t: Date.now() };
+      localStorage.setItem("lockin_geo", JSON.stringify(geo));
+    }
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+    const w = await (await fetch(url)).json();
+    const c = w.current;
+    $("#wTemp").textContent = `${Math.round(c.temperature_2m)}°`;
+    $("#wCond").textContent = WMO[c.weather_code] || "—";
+    $("#wPlace").textContent = [geo.city, geo.region].filter(Boolean).join(", ");
+    $("#wMeta").textContent = `Feels ${Math.round(c.apparent_temperature)}° · Wind ${Math.round(c.wind_speed_10m)} km/h`;
+    $("#wRow").textContent = `H ${Math.round(w.daily.temperature_2m_max[0])}°  L ${Math.round(w.daily.temperature_2m_min[0])}°`;
+    $("#wUpdated").textContent = hhmm(new Date());
+    weatherAt = Date.now();
+  } catch (e) {
+    $("#wCond").textContent = "No connection";
+    $("#wPlace").textContent = "Weather needs internet on the Pi";
+  }
 }
 
-showAlarm(); loadTracks(); poll(); tick();
+/* ---------------- music ---------------- */
+const NOISE = [
+  { id: "white", title: "White noise", sub: "Built-in · masks everything" },
+  { id: "pink", title: "Pink noise", sub: "Built-in · softer, rain-like" },
+  { id: "brown", title: "Brown noise", sub: "Built-in · deep, low rumble" },
+];
+let files = [];
+let activeId = null;
+const audioEl = new Audio();
+audioEl.volume = 0.55;
+let noiseSrc = null, noiseGain = null;
+
+function noiseBuffer(c, type) {
+  const sr = c.sampleRate, len = sr * 2, buf = c.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  let last = 0, b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    if (type === "white") d[i] = w * 0.4;
+    else if (type === "brown") { last = (last + 0.02 * w) / 1.02; d[i] = last * 2.6; }
+    else {
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759;
+      b2 = 0.969 * b2 + w * 0.153852; b3 = 0.8665 * b3 + w * 0.3104856;
+      b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.09; b6 = w * 0.115926;
+    }
+  }
+  return buf;
+}
+function stopAudio() {
+  if (noiseSrc) { try { noiseSrc.stop(); } catch (e) {} noiseSrc = null; }
+  if (noiseGain) { try { noiseGain.disconnect(); } catch (e) {} noiseGain = null; }
+  audioEl.pause();
+  activeId = null;
+}
+async function playItem(item) {
+  const wasPlaying = activeId === item.id;
+  stopAudio();
+  if (wasPlaying) { renderMusic(); return; }
+  if (item.url) {
+    audioEl.src = item.url;
+    try { await audioEl.play(); } catch (e) { return toast("Couldn't play that file"); }
+  } else {
+    const c = audio(); if (!c) return toast("Audio unavailable");
+    noiseSrc = c.createBufferSource();
+    noiseSrc.buffer = noiseBuffer(c, item.id);
+    noiseSrc.loop = true;
+    noiseGain = c.createGain();
+    noiseGain.gain.value = 0.5;
+    noiseSrc.connect(noiseGain).connect(c.destination);
+    noiseSrc.start();
+  }
+  activeId = item.id;
+  renderMusic();
+}
+async function loadMusic() {
+  try { files = await api("/music"); } catch (e) { files = []; }
+  $("#musicNote").textContent = files.length ? `${files.length} on the Pi` : "no files on the Pi";
+  renderMusic();
+}
+function renderMusic() {
+  const items = [...NOISE, ...files.map((f) => ({ id: f.url, title: f.title, sub: "On the Pi", url: f.url }))];
+  if (!items.length) return;
+  const ul = $("#musicList");
+  ul.innerHTML = "";
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    if (activeId === item.id) li.classList.add("playing");
+    li.innerHTML = '<span class="playdot">' + (activeId === item.id ? "❚❚" : "▶") + '</span><button class="snd"><span class="t" style="display:block"></span><span class="from"></span></button><span class="badge"></span>';
+    li.querySelector(".t").textContent = item.title;
+    li.querySelector(".from").textContent = item.sub;
+    li.querySelector(".badge").textContent = item.url ? "MP3" : "SYNTH";
+    li.querySelector(".snd").onclick = () => playItem(item);
+    ul.appendChild(li);
+  });
+}
+audioEl.addEventListener("ended", () => { activeId = null; renderMusic(); });
+
+/* ---------------- wifi / bluetooth / link ---------------- */
+async function loadNetwork() {
+  try {
+    const n = await api("/network");
+    $("#wifiSsid").textContent = n.ssid || "not detected";
+    $("#wifiIp").textContent = n.ip || "—";
+    $("#wifiHost").textContent = n.hostname || "—";
+  } catch (e) {
+    $("#wifiSsid").textContent = "unavailable";
+  }
+}
+
+async function loadBluetooth() {
+  const box = $("#btBody");
+  try {
+    const s = await api("/bluetooth/status");
+    if (!s.available) { box.innerHTML = '<p class="muted">Only available on the Pi.</p>'; $("#btScan").hidden = true; return; }
+    $("#btScan").hidden = false;
+    if (s.connected) {
+      box.innerHTML = `<div class="rowline"><span class="muted">Connected</span><b id="btName"></b></div>`;
+      $("#btName").textContent = s.connected.name;
+      const b = document.createElement("button");
+      b.className = "mini ghost"; b.style.marginTop = "9px"; b.textContent = "Disconnect";
+      b.onclick = async () => { try { await post("/bluetooth/disconnect", { mac: s.connected.mac }); loadBluetooth(); } catch (e) { toast(e.message); } };
+      box.appendChild(b);
+      return;
+    }
+    box.innerHTML = '<p class="muted">Nothing connected. Pairing needs the speaker in pairing mode.</p>';
+  } catch (e) {
+    box.innerHTML = '<p class="muted">Only available on the Pi.</p>';
+    $("#btScan").hidden = true;
+  }
+}
+$("#btScan").onclick = async () => {
+  const box = $("#btBody");
+  box.innerHTML = '<p class="muted">Scanning…</p>';
+  try {
+    const s = await post("/bluetooth/scan");
+    if (!s.devices.length) { box.innerHTML = '<p class="muted">No devices found.</p>'; return; }
+    box.innerHTML = "";
+    s.devices.forEach((d) => {
+      const row = document.createElement("div");
+      row.className = "rowline";
+      row.innerHTML = '<span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button class="mini">Pair</button>';
+      row.querySelector("span").textContent = d.name;
+      row.querySelector("button").onclick = async () => {
+        row.querySelector("button").textContent = "…";
+        try { await post("/bluetooth/connect", { mac: d.mac }); loadBluetooth(); }
+        catch (e) { row.querySelector("button").textContent = "Pair"; toast(e.message); }
+      };
+      box.appendChild(row);
+    });
+  } catch (e) { box.innerHTML = `<p class="muted">${e.message}</p>`; }
+};
+
+/* ---------------- popovers + tabs + theme ---------------- */
+function closePops(except) {
+  $$(".pop.show").forEach((p) => { if (p !== except) p.classList.remove("show"); });
+}
+$$(".icon").forEach((icon) => {
+  const btn = icon.querySelector(".ib"), pop = icon.querySelector(".pop");
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = pop.classList.contains("show");
+    closePops();
+    if (open) return;
+    pop.classList.add("show");
+    if (pop.id === "popWifi") loadNetwork();
+    if (pop.id === "popBt") loadBluetooth();
+    if (pop.id === "popLink") { $("#linkOrigin").textContent = location.host; $("#linkState").textContent = reachable ? "Connected" : "Unreachable"; }
+  });
+});
+$$(".pop").forEach((p) => p.addEventListener("click", (e) => e.stopPropagation()));
+document.addEventListener("click", () => closePops());
+
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem("lockin_theme", t);
+  $$("#themeSeg button").forEach((b) => b.classList.toggle("on", b.dataset.theme === t));
+}
+$$("#themeSeg button").forEach((b) => (b.onclick = () => setTheme(b.dataset.theme)));
+
+const VIEWS = ["home", "todo", "weather", "music"];
+let view = "home";
+function setView(v) {
+  view = v;
+  closePops();
+  $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+  VIEWS.forEach((name) => $("#v-" + name).classList.toggle("on", name === v));
+  if (v === "weather") loadWeather();
+  if (v === "music") { loadMusic(); }
+}
+$$("#tabs button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
+
+/* swipe between tabs (a swipe must never toggle a row) */
+const frame = $("#frame");
+let sx = 0, sy = 0, suppressUntil = 0;
+frame.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; }, { passive: true });
+frame.addEventListener("pointerup", (e) => {
+  const dx = e.clientX - sx, dy = e.clientY - sy;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+    suppressUntil = Date.now() + 400;
+    const i = VIEWS.indexOf(view);
+    setView(VIEWS[(i + (dx < 0 ? 1 : -1) + VIEWS.length) % VIEWS.length]);
+  }
+}, { passive: true });
+document.addEventListener("click", (e) => {
+  if (Date.now() < suppressUntil) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+
+/* ---------------- polling ---------------- */
+async function poll() {
+  try { render(await api("/state")); }
+  catch (e) {
+    reachable = false;
+    $("#dot").className = "dot bad";
+    $("#linkState").textContent = "Unreachable";
+  }
+}
+
+setTheme(localStorage.getItem("lockin_theme") || "dark");
+setView("home");
+poll();
+loadMusic();
+loadWeather();
 setInterval(poll, 1000);
 setInterval(tick, 250);
-setInterval(loadTracks, 60000);
+setInterval(loadMusic, 60000);
 </script>
 </body>
 </html>
