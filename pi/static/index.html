@@ -91,6 +91,9 @@
   .until { color: var(--muted); font-size: calc(2.2 * var(--u)); }
   .bar { height: calc(1.2 * var(--u)); background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-top: calc(.6 * var(--u)); }
   .bar div { height: 100%; width: 0; background: var(--signal); transition: width 1s linear; }
+  .held { display: flex; flex-wrap: nowrap; overflow: hidden; gap: calc(.8 * var(--u)); margin-top: calc(1 * var(--u)); min-height: calc(3.4 * var(--u)); }
+  .held span { flex: none; white-space: nowrap; font: 600 calc(1.4 * var(--u)) var(--mono); letter-spacing: .04em; text-transform: uppercase; padding: calc(.6 * var(--u)) calc(1.2 * var(--u)); border-radius: 99px; background: var(--panel-2); color: var(--muted); }
+  .held span.total { background: var(--cyan); color: var(--ink); }
   .locked-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.6 * var(--u)); min-height: calc(13 * var(--u)); }
   .msg .text, .digest .text { font-size: calc(1.9 * var(--u)); line-height: 1.35; max-height: calc(8 * var(--u)); overflow: hidden; }
   .digest .text { white-space: pre-line; font-size: calc(1.7 * var(--u)); }
@@ -201,6 +204,7 @@
         <div class="countdown" id="countdown">00:00</div>
         <div class="until" id="until"></div>
         <div class="bar"><div id="bar"></div></div>
+        <div class="held" id="held"></div>
       </div>
     </div>
     <div class="locked-bottom">
@@ -444,6 +448,20 @@ function render(s) {
     const who = document.createElement("b"); who.className = "who"; who.textContent = m.from + ": ";
     $("#msgText").append(who, document.createTextNode(m.text));
     if (m.urgent && s.urgent_pending && card.dataset.at !== String(m.at)) { card.dataset.at = m.at; sounds.alert(); }
+  }
+
+  // notifications caught from the phone in the box
+  const held = s.held || {}, total = Object.values(held).reduce((a, b) => a + b, 0);
+  const heldKey = JSON.stringify(held);
+  if ($("#held").dataset.key !== heldKey) {
+    $("#held").dataset.key = heldKey;
+    $("#held").innerHTML = "";
+    if (total) {
+      const t = document.createElement("span"); t.className = "total"; t.textContent = `${total} held from your phone`; $("#held").appendChild(t);
+      Object.entries(held).sort((a, b) => b[1] - a[1]).slice(0, 4).forEach(([app, n]) => {
+        const c = document.createElement("span"); c.textContent = `${app} ${n}`; $("#held").appendChild(c);
+      });
+    }
   }
 
   // digest

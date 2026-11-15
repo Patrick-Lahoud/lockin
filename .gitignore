@@ -4,6 +4,7 @@
 *.key
 *.pem
 .usage.json
+.phone_cursor.json
 .owner.json
 state.json
 __pycache__/

@@ -68,7 +68,7 @@ function tick() {
   const total = S.ends_at - S.started_at;
   $("#shutter").style.setProperty("--done", `${Math.min(100, ((total - left) / total) * 100)}%`);
 }
-poll(); setInterval(poll, 2000); setInterval(tick, 250);
+poll(); setInterval(poll, 1000); setInterval(tick, 250);
 </script>
 </body>
 </html>

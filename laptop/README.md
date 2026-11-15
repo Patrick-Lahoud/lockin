@@ -11,7 +11,7 @@ The one big change: Shutout asked for the admin password on every start/stop. Lo
 
 ```
 box locks ──► Pi state: mode=locked
-                 ▲  GET /state every 2 s
+                 ▲  GET /state every second
    lockin_guard.py system   (root)  → /etc/hosts gets:
                                         # LOCKIN-BEGIN
                                         0.0.0.0 instagram.com
@@ -49,11 +49,11 @@ PowerShell as Administrator: `powershell -ExecutionPolicy Bypass -File install_w
 (hosts block + quitting apps; the open-tab kicker is macOS-only).
 
 ## Demo tips
-* Open Instagram **after** pressing start. Browsers keep already-open connections alive for a bit; the tab kicker handles open tabs within 2 s.
+* Open Instagram **after** pressing start. Browsers keep already-open connections alive for a bit; the tab kicker handles open tabs within a second.
 * Firefox with "DNS over HTTPS" still respects the hosts file by default.
 * If a site still loads, check `cat /etc/hosts` and the log. A missing subdomain goes in `EXTRA_HOSTS` in `lockin_guard.py`.
 * Don't block `web.telegram.org`: that's how you text the agent "emergency" from the laptop.
 
 ## "Can't I just edit the hosts file?"
-You'd need the admin password, and the guard rewrites it within 2 s anyway. In the product, a
+You'd need the admin password, and the guard rewrites it within a second anyway. In the product, a
 device-management (MDM) profile that only the box can remove replaces the hosts file.

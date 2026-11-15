@@ -5,7 +5,8 @@ import httpx
 class Pi:
     def __init__(self, url: str):
         self.url = url.rstrip("/")
-        self.http = httpx.AsyncClient(timeout=4)
+        # trust_env=False: the box is on the local network; never route it through a system proxy/VPN
+        self.http = httpx.AsyncClient(timeout=4, trust_env=False)
 
     async def _call(self, method: str, path: str, body: dict | None = None):
         try:
@@ -30,6 +31,10 @@ class Pi:
 
     async def message(self, sender: str, text: str, urgent: bool):
         return await self._call("POST", "/message", {"from": sender, "text": text, "urgent": urgent})
+
+    async def inbox(self, after: int) -> dict | None:
+        ok, data = await self._call("GET", f"/inbox?after={int(after)}")
+        return data if ok else None
 
     async def digest(self, text: str, final: bool):
         return await self._call("POST", "/digest", {"text": text, "final": final})

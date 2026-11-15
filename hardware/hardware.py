@@ -39,13 +39,20 @@ try:
         max_pulse_width=0.0025,
     )
     _servo.detach()  # no signal until we move: stops buzzing and saves power
-    if HAS_LID:
-        # Lid closed = foil strip bridges the two pads = pin pulled to GND = "pressed".
-        _lid = Button(LID_PIN, pull_up=True, bounce_time=0.05)
     REAL = True
-    print(f"[hardware] real GPIO: servo on GPIO{SERVO_PIN}, lid sensor {'on GPIO%d' % LID_PIN if HAS_LID else 'disabled'}")
+    print(f"[hardware] real GPIO: servo on GPIO{SERVO_PIN}")
 except Exception as e:  # not a Pi, or gpiozero missing
     print(f"[hardware] no GPIO ({e.__class__.__name__}: {e}); using FAKE hardware")
+
+if REAL and HAS_LID:
+    # Separate on purpose: a broken lid switch must never disable the servo.
+    try:
+        # Lid closed = foil strip bridges the two pads = pin pulled to GND = "pressed".
+        _lid = Button(LID_PIN, pull_up=True, bounce_time=0.05)
+        print(f"[hardware] lid sensor on GPIO{LID_PIN}")
+    except Exception as e:
+        _lid = None
+        print(f"[hardware] lid sensor failed ({e}); treating the lid as always closed")
 
 
 def _move(angle: int) -> None:

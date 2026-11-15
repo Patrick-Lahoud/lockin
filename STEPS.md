@@ -43,6 +43,11 @@ Tick these off in order. Everything else is already built. Details for each part
 - [ ] A teammate texts `URGENT call me` → box turns red with **Unlock free**.
 - [ ] You text `emergency test` → box unlocks, "4 exits left".
 
+## Android phone in the box (after the checkpoint)
+
+- [ ] Follow **[agent/ANDROID_SETUP.md](agent/ANDROID_SETUP.md)**: MacroDroid forwards every notification to the box (15 min).
+- [ ] No phone handy / stage backup: `python3 scripts/simulate_phone.py --pi http://<PI-IP>:8000`
+
 ## 1:00 decision point
 
 - [ ] Servo working? If not → fallback: screen says LOCKED, hold the lid on stage.

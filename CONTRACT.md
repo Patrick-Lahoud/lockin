@@ -21,6 +21,8 @@ Pi server: Python FastAPI on port **8000** → `http://lockin.local:8000` (or `h
 | POST | `/message` | `{"from": "Mom", "text": "Call me now", "urgent": true}` | agent | Shows the message on the box. `urgent: true` offers the free unlock |
 | POST | `/digest` | `{"text": "Mom wants bread…", "final": false}` | agent | Shows the 5-minute digest (`final: true` = end-of-session summary) |
 | POST | `/settings` | `{"blocked_sites": [...], "blocked_apps": [...], "max_exits": 5}` | setup page | Saves what to block. `409` while locked (you can't unblock Instagram mid-session) |
+| POST | `/inbox` | plain text `app\ntitle\ntext` (or JSON / form with `app`, `title`, `text`, optional `package`) | **the Android phone in the box** (MacroDroid) | Stores one phone notification for the agent. While locked, counts it in `held` |
+| GET | `/inbox?after=<id>` | none | agent (every 2 s) | `{"items": [{"id", "at", "app", "package", "title", "text"}], "last_id": 42}` |
 | POST | `/nudge` | none | webcam script (stretch) | Makes the box face sad for 30 s |
 | POST | `/reset` | none | setup page | Demo helper: exits back to max, clears messages and digests |
 | GET | `/`, `/setup`, `/blocked` | none | browsers | Box screen, setup page, "Locked In" page shown on the laptop |
@@ -47,6 +49,7 @@ All POSTs reply with the full new state (same shape as `GET /state`), or `{"deta
   "urgent_pending": true,
   "last_digest": {"text": "Mom wants bread (added to to-do).", "final": false, "at": 1763223900},
   "last_unlock": {"reason": "timer", "at": 1763222000},
+  "held": {"Instagram": 4, "WhatsApp": 2},
   "face": "focused"
 }
 ```
@@ -54,4 +57,5 @@ All POSTs reply with the full new state (same shape as `GET /state`), or `{"deta
 * `mode`: `"idle"` or `"locked"`.
 * `ends_at`, `started_at`, `server_time`, every `at`: Unix timestamps in **seconds**.
 * `session_id`: goes up by 1 on every lock. The agent uses it to know a new session started.
+* `held`: phone notifications caught this session, per app (reset on every lock).
 * `face`: `"happy"`, `"focused"`, `"worried"` (urgent message), `"sad"` (nudge), `"proud"` (just finished).

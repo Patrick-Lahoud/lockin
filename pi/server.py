@@ -17,7 +17,7 @@ import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -73,11 +73,17 @@ DEFAULT_STATE = {
     "last_digest": None,
     "last_unlock": None,
     "nudge_at": None,
+    "held": {},  # notifications caught from the phone in the box this session, per app
 }
 
 DOMAIN_RE = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
 APP_RE = re.compile(r"^[A-Za-z0-9 ._-]{1,40}$")
 MAX_TODOS = 30
+
+# Phone notifications waiting for the agent (in memory, newest last). See POST /inbox.
+INBOX: deque = deque(maxlen=300)
+_inbox_seq = 0
+BOOT_ID = secrets.token_hex(4)  # changes on every restart, so the agent knows to reset its inbox cursor
 
 state: dict = {}
 state_lock = asyncio.Lock()
@@ -101,9 +107,23 @@ def load_state() -> dict:
 
 
 def save_state() -> None:
-    tmp = STATE_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps(state, indent=2))
-    os.replace(tmp, STATE_FILE)  # atomic: a crash never leaves half a file
+    """Best effort: the state in memory is the truth; disk is only for surviving a reboot.
+    A full or read-only SD card must never break locking/unlocking."""
+    try:
+        tmp = STATE_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state, indent=2))
+        os.replace(tmp, STATE_FILE)  # atomic: a crash never leaves half a file
+    except Exception as e:
+        print(f"[server] couldn't save state.json ({e}); continuing from memory")
+
+
+def lid_ok() -> bool:
+    """A flaky lid sensor must never crash the server; if it errors, treat the lid as closed."""
+    try:
+        return bool(hw.lid_closed())
+    except Exception as e:
+        print(f"[server] lid sensor error ({e}); assuming closed")
+        return True
 
 
 def face() -> str:
@@ -123,18 +143,22 @@ def face() -> str:
 def public_state() -> dict:
     s = dict(state)
     s.pop("nudge_at", None)
-    s["lid_closed"] = bool(hw.lid_closed())
+    s["lid_closed"] = lid_ok()
     s["server_time"] = now()
     s["face"] = face()
     return s
 
 
-async def run_hw(fn) -> None:
+async def run_hw(fn, attempts: int = 1) -> bool:
     # servo moves take ~0.7 s; run them in a thread so the server keeps answering
-    try:
-        await asyncio.to_thread(fn)
-    except Exception as e:
-        print(f"[server] hardware error: {e}")
+    for i in range(attempts):
+        try:
+            await asyncio.to_thread(fn)
+            return True
+        except Exception as e:
+            print(f"[server] hardware error (try {i + 1}/{attempts}): {e}")
+            await asyncio.sleep(0.3)
+    return False
 
 
 async def do_unlock(reason: str) -> None:
@@ -144,17 +168,20 @@ async def do_unlock(reason: str) -> None:
     state["urgent_pending"] = False
     state["last_unlock"] = {"reason": reason, "at": now()}
     save_state()
-    await run_hw(hw.unlock)
+    await run_hw(hw.unlock, attempts=3)  # opening the box matters most: retry
     print(f"[server] unlocked ({reason})")
 
 
 async def timer_loop() -> None:
     while True:
         await asyncio.sleep(0.5)
-        if state.get("mode") == "locked" and state.get("ends_at") and now() >= state["ends_at"]:
-            async with state_lock:
-                if state["mode"] == "locked" and now() >= state["ends_at"]:
-                    await do_unlock("timer")
+        try:
+            if state.get("mode") == "locked" and state.get("ends_at") and now() >= state["ends_at"]:
+                async with state_lock:
+                    if state["mode"] == "locked" and now() >= (state.get("ends_at") or 0):
+                        await do_unlock("timer")
+        except Exception as e:  # never let the timer die: the box must open on time
+            print(f"[server] timer error: {e}")
 
 
 @asynccontextmanager
@@ -182,10 +209,11 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 # ---------------------------------------------------------------- rate limits (per IP)
 # GET /state is polled constantly and stays unlimited. Changes are limited:
 RATE_LIMITS = {
-    "/lock": (6, 60),        # 6 per minute
-    "/unlock": (6, 60),
+    "/lock": (12, 60),       # 12 per minute
+    "/unlock": (12, 60),
     "/settings": (10, 60),
     "/reset": (5, 60),
+    "/inbox": (180, 60),     # the phone in the box can burst notifications
     "*": (60, 60),           # every other POST/DELETE: 60 per minute
 }
 MAX_BODY_BYTES = 16 * 1024
@@ -195,7 +223,11 @@ _hits: dict = defaultdict(deque)
 @app.middleware("http")
 async def guard_requests(request: Request, call_next):
     if request.method in ("POST", "DELETE", "PUT", "PATCH"):
-        if int(request.headers.get("content-length") or 0) > MAX_BODY_BYTES:
+        try:
+            length = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            return JSONResponse({"detail": "Bad Content-Length"}, status_code=400)
+        if length > MAX_BODY_BYTES:
             return JSONResponse({"detail": "Request too large"}, status_code=413)
         path = request.url.path
         limit, window = RATE_LIMITS.get(path, RATE_LIMITS["*"])
@@ -213,6 +245,8 @@ async def guard_requests(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
+    if not request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-store"  # live state: never serve a stale copy
     return response
 
 
@@ -254,7 +288,7 @@ async def post_lock(request: Request):
     async with state_lock:
         if state["mode"] == "locked":
             raise HTTPException(409, "Already locked in")
-        if not hw.lid_closed():
+        if not lid_ok():
             raise HTTPException(409, "Close the lid first")
         t = now()
         state.update(
@@ -267,6 +301,7 @@ async def post_lock(request: Request):
             urgent_pending=False,
             last_digest=None,
             nudge_at=None,
+            held={},
         )
         save_state()
         await run_hw(hw.lock)
@@ -301,6 +336,8 @@ async def post_todo(request: Request):
     if not text:
         raise HTTPException(400, "text is required")
     async with state_lock:
+        if any(t["text"].lower() == text.lower() and not t["done"] for t in state["todos"]):
+            return public_state()  # already on the list
         state["todos"].append(
             {"id": secrets.token_hex(3), "text": text, "from": clean_text(data.get("from"), 40) or "Me", "done": False}
         )
@@ -336,7 +373,14 @@ async def post_message(request: Request):
         raise HTTPException(400, "text is required")
     urgent = bool(data.get("urgent"))
     async with state_lock:
-        state["last_message"] = {"from": clean_text(data.get("from"), 40) or "Someone", "text": text, "urgent": urgent, "at": now()}
+        if state.get("urgent_pending") and not urgent and state["mode"] == "locked":
+            return public_state()  # keep the red urgent card (and its free-unlock button) on screen
+        sender = clean_text(data.get("from"), 40) or "Someone"
+        prev = state.get("last_message") or {}
+        if urgent and state.get("urgent_pending") and prev.get("urgent") and prev.get("from", "").split(" (")[0] == sender.split(" (")[0]:
+            text = f"{prev['text']} · {text}"[:300]  # same person again: keep the whole story on the card
+            sender = prev["from"]
+        state["last_message"] = {"from": sender, "text": text, "urgent": urgent, "at": now()}
         if urgent and state["mode"] == "locked":
             state["urgent_pending"] = True
         save_state()
@@ -382,6 +426,70 @@ async def post_settings(request: Request):
             state["exits_left"] = min(state["exits_left"], m)
         save_state()
         return public_state()
+
+
+# ---------------------------------------------------------------- phone notifications
+_LENIENT_JSON = re.compile(r'"(\w+)"\s*:\s*"(.*?)"\s*(?=,\s*"\w+"\s*:|\s*}\s*$)', re.S)
+
+
+def _parse_notification(raw: str, content_type: str, query: dict) -> dict:
+    """Accepts anything MacroDroid (or a script) can send, and never chokes on quotes/newlines:
+    * text/plain, one field per line:  app \n title \n text...   (recommended: can't break)
+    * JSON  {"app": ..., "title": ..., "text": ...}  (also repaired if the text broke the JSON)
+    * form fields or URL query params with the same names
+    """
+    data: dict = {}
+    body = raw.strip()
+    if body.startswith("{") or "json" in content_type:
+        try:
+            parsed = json.loads(body)
+            data = parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            data = {k: v for k, v in _LENIENT_JSON.findall(body)}
+    elif "form" in content_type:
+        data = dict(parse_qsl(body))
+    elif body:
+        lines = body.splitlines()
+        data = {"app": lines[0], "title": lines[1] if len(lines) > 1 else "", "text": " ".join(lines[2:])}
+    data = {**query, **data}
+
+    def pick(*keys):
+        for k in keys:
+            v = data.get(k)
+            if v not in (None, "") and not re.fullmatch(r"[\[{][a-z_]+[\]}]", str(v)):  # "[notification]" = unfilled magic text
+                return str(v)
+        return ""
+
+    return {
+        "app": clean_text(pick("app", "app_name", "source"), 40),
+        "package": clean_text(pick("package", "pkg", "app_package"), 80),
+        "title": clean_text(pick("title", "from", "sender", "notification_title"), 80),
+        "text": clean_text(pick("text", "message", "body", "notification", "content"), 600),
+    }
+
+
+@app.post("/inbox")
+async def post_inbox(request: Request):
+    """The phone in the box forwards every notification here (MacroDroid HTTP request)."""
+    global _inbox_seq
+    raw = (await request.body())[:MAX_BODY_BYTES].decode("utf-8", "replace")
+    n = _parse_notification(raw, request.headers.get("content-type", ""), dict(request.query_params))
+    if not (n["text"] or n["title"]):
+        raise HTTPException(400, "Empty notification")
+    async with state_lock:
+        _inbox_seq += 1
+        INBOX.append({"id": _inbox_seq, "at": now(), **n})
+        if state["mode"] == "locked":
+            label = n["app"] or n["package"].split(".")[-1].title() or "Phone"
+            state["held"][label] = state["held"].get(label, 0) + 1
+            save_state()
+    return {"ok": True, "id": _inbox_seq}
+
+
+@app.get("/inbox")
+async def get_inbox(after: int = 0):
+    """The agent polls this: everything newer than `after`."""
+    return {"items": [i for i in INBOX if i["id"] > after], "last_id": _inbox_seq, "boot": BOOT_ID}
 
 
 @app.post("/nudge")

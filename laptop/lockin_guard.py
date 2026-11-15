@@ -44,7 +44,7 @@ else:
 
 BEGIN = "# LOCKIN-BEGIN (managed by Lock In, do not edit)"
 END = "# LOCKIN-END"
-POLL_SECONDS = 2
+POLL_SECONDS = 1
 DOMAIN_RE = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
 APP_RE = re.compile(r"^[A-Za-z0-9 ._-]{1,40}$")
 
@@ -82,9 +82,13 @@ def load_config(args) -> dict:
     return cfg
 
 
+# Never route the box through a system proxy/VPN: it's on the local network.
+_DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def fetch_state(pi_url: str):
     try:
-        with urllib.request.urlopen(f"{pi_url}/state", timeout=1.5) as r:
+        with _DIRECT.open(f"{pi_url}/state", timeout=1.5) as r:
             data = json.loads(r.read().decode())
             return data if isinstance(data, dict) else None
     except Exception:

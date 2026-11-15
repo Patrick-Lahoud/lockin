@@ -8,6 +8,7 @@ one timer, while a Telegram agent answers your messages.
 * `ARCHITECTURE.md`: the full blueprint (diagram, decisions, build plan, wiring, fallbacks)
 * `CONTRACT.md`: the API everyone builds against
 * `SECURITY.md`: security review + what's fixed / still open
+* `agent/ANDROID_SETUP.md`: the Android phone in the box forwards Instagram, Snapchat, WhatsApp, Telegram… notifications (15 min setup)
 * One folder per person: `hardware/` (A), `pi/` (B), `laptop/` (C), `agent/` (D). Each has its own README.
 
 **After cloning, everyone runs `./scripts/install_hooks.sh` once.** It blocks commits that contain API keys.
