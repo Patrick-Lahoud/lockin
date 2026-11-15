@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lock In Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root { --paper: #f4f5f1; --ink: #161716; --signal: #e7483f; --moss: #4d684f; --cyan: #00a9a5; --line: #c9ccc3; --muted: #5b5e56;
+    --display: "Archivo Black", "Arial Black", sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: Inter, system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  header { height: 64px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--ink); padding: 0 clamp(16px, 4vw, 48px); }
+  .brand { font: 400 18px var(--display); display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+  .brand i { width: 26px; height: 26px; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-style: normal; font-size: 14px; }
+  .status { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; display: flex; gap: 8px; align-items: center; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--moss); }
+  .status.locked::before { background: var(--signal); }
+  main { max-width: 920px; margin: 0 auto; padding: 32px clamp(16px, 4vw, 48px) 64px; }
+  h1 { font: 400 clamp(36px, 6vw, 64px)/.95 var(--display); margin: 0 0 12px; }
+  .lede { color: var(--muted); font-size: 16px; line-height: 1.5; margin: 0 0 32px; max-width: 560px; }
+  section { border-top: 1px solid var(--ink); padding: 24px 0; }
+  .head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .step { width: 28px; height: 28px; border: 1px solid var(--ink); display: grid; place-items: center; font: 600 10px var(--mono); }
+  h2 { margin: 0; font-size: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .opt { min-height: 72px; border: 1px solid var(--line); border-radius: 4px; background: transparent; display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+  .opt:hover { border-color: var(--ink); }
+  .opt.on { border-color: var(--ink); background: #fff; box-shadow: inset 4px 0 0 var(--c, var(--signal)); }
+  .badge { width: 38px; height: 38px; flex: none; border-radius: 4px; display: grid; place-items: center; color: #fff; font: 700 13px var(--mono); background: var(--c, var(--ink)); }
+  .opt b { display: block; font-size: 15px; }
+  .opt small { font: 500 11px var(--mono); color: var(--muted); }
+  .opt .tick { margin-left: auto; width: 20px; height: 20px; border: 1.5px solid var(--line); border-radius: 3px; display: grid; place-items: center; font-size: 13px; }
+  .opt.on .tick { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .opt.on .tick::after { content: "✓"; }
+  .add { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .add input { flex: 1; min-width: 180px; height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 0 12px; background: #fff; }
+  .btn { height: 44px; padding: 0 18px; border-radius: 4px; border: 1px solid var(--ink); background: transparent; cursor: pointer; font-weight: 600; }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:disabled { opacity: .4; cursor: not-allowed; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .exits button { width: 44px; height: 44px; border: 1px solid var(--ink); background: transparent; border-radius: 4px; font-size: 20px; cursor: pointer; }
+  .exits output { font: 400 32px var(--display); min-width: 48px; text-align: center; }
+  .note { font: 500 12px var(--mono); color: var(--muted); margin-top: 10px; line-height: 1.6; }
+  code { background: #e7e9e2; padding: 2px 6px; border-radius: 3px; font: 500 12px var(--mono); }
+  .bar { position: sticky; bottom: 0; background: var(--paper); border-top: 1px solid var(--ink); padding: 14px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #msg { font-size: 14px; color: var(--moss); font-weight: 600; }
+  #msg.err { color: var(--signal); }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="/"><i>🔒</i>Lock In</a>
+  <span class="status" id="status">Box idle</span>
+</header>
+<main>
+  <h1>Pick what gets locked.</h1>
+  <p class="lede">When the box locks, these sites stop working in every browser on your laptop, and these apps quit. Only the box can unlock them.</p>
+
+  <section>
+    <div class="head"><span class="step">01</span><h2>Websites</h2></div>
+    <div class="grid" id="sites"></div>
+    <form class="add" id="addSite">
+      <input id="siteInput" placeholder="Add a site, e.g. reddit.com" autocomplete="off">
+      <button class="btn" type="submit">Add site</button>
+    </form>
+  </section>
+
+  <section>
+    <div class="head"><span class="step">02</span><h2>Laptop apps</h2></div>
+    <div class="grid" id="apps"></div>
+    <form class="add" id="addApp">
+      <input id="appInput" placeholder="Add an app by its exact name, e.g. Discord" autocomplete="off">
+      <button class="btn" type="submit">Add app</button>
+    </form>
+  </section>
+
+  <section>
+    <div class="head"><span class="step">03</span><h2>Emergency exits</h2></div>
+    <div class="row exits">
+      <button type="button" id="exMinus">−</button><output id="exits">5</output><button type="button" id="exPlus">+</button>
+      <span id="exLeft" class="note"></span>
+    </div>
+    <p class="note">Text your Telegram agent <code>emergency &lt;reason&gt;</code> to leave early. Each one costs an exit. Urgent messages from others unlock for free.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="step">04</span><h2>Connect your laptop</h2></div>
+    <p class="note">On the laptop, run <code>./install_mac.sh <span id="origin"></span></code> from the <code>laptop/</code> folder once. In the agent's <code>.env</code> set <code>PI_URL=<span id="origin2"></span></code>.</p>
+  </section>
+
+  <div class="bar">
+    <button class="btn primary" id="save">Save</button>
+    <button class="btn" id="reset" type="button">Refill exits (demo)</button>
+    <a class="btn" href="/" style="display:grid;place-items:center;text-decoration:none">Back to box</a>
+    <span id="msg"></span>
+  </div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const PRESET_SITES = [
+  ["Instagram", "instagram.com", "#e74857", "IG"], ["TikTok", "tiktok.com", "#131313", "TT"],
+  ["LinkedIn", "linkedin.com", "#1573b9", "in"], ["YouTube", "youtube.com", "#e62117", "YT"],
+  ["X / Twitter", "x.com", "#000000", "X"], ["Reddit", "reddit.com", "#ff4500", "RD"],
+  ["Facebook", "facebook.com", "#1877f2", "FB"], ["Netflix", "netflix.com", "#b20710", "NF"],
+];
+const PRESET_APPS = [["Discord", "#5865f2", "DC"], ["Steam", "#1b2838", "ST"], ["Slack", "#4a154b", "SL"], ["Messages", "#34c759", "MS"]];
+let sites = [], apps = [], maxExits = 5, locked = false;
+
+function opt({ label, sub, color, short, on, onClick }) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "opt" + (on ? " on" : "");
+  b.style.setProperty("--c", color);
+  b.innerHTML = `<span class="badge"></span><span><b></b><small></small></span><span class="tick"></span>`;
+  b.querySelector(".badge").textContent = short; b.querySelector("b").textContent = label; b.querySelector("small").textContent = sub;
+  b.onclick = onClick; return b;
+}
+function draw() {
+  const sEl = $("#sites"); sEl.innerHTML = "";
+  const known = new Set(PRESET_SITES.map((p) => p[1]));
+  PRESET_SITES.forEach(([label, d, c, sh]) => sEl.appendChild(opt({ label, sub: d, color: c, short: sh, on: sites.includes(d), onClick: () => toggle(sites, d) })));
+  sites.filter((d) => !known.has(d)).forEach((d) => sEl.appendChild(opt({ label: d.split(".")[0], sub: d, color: "#00a9a5", short: d.slice(0, 2).toUpperCase(), on: true, onClick: () => toggle(sites, d) })));
+  const aEl = $("#apps"); aEl.innerHTML = "";
+  const knownA = new Set(PRESET_APPS.map((p) => p[0]));
+  PRESET_APPS.forEach(([a, c, sh]) => aEl.appendChild(opt({ label: a, sub: "quits while locked", color: c, short: sh, on: apps.includes(a), onClick: () => toggle(apps, a) })));
+  apps.filter((a) => !knownA.has(a)).forEach((a) => aEl.appendChild(opt({ label: a, sub: "quits while locked", color: "#00a9a5", short: a.slice(0, 2).toUpperCase(), on: true, onClick: () => toggle(apps, a) })));
+  $("#exits").textContent = maxExits;
+  $("#save").disabled = locked;
+}
+function toggle(list, v) { if (locked) return say("Locked in: you can't change this until the session ends.", true); const i = list.indexOf(v); i >= 0 ? list.splice(i, 1) : list.push(v); draw(); }
+function say(t, err) { const m = $("#msg"); m.textContent = t; m.className = err ? "err" : ""; }
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || r.statusText); return d;
+}
+function apply(s, all) {
+  const wasLocked = locked;
+  locked = s.mode === "locked";
+  const st = $("#status"); st.textContent = locked ? "Box locked" : "Box idle"; st.classList.toggle("locked", locked);
+  $("#exLeft").textContent = `${s.exits_left} of ${s.max_exits} left right now`;
+  if (all) { sites = [...s.blocked_sites]; apps = [...s.blocked_apps]; maxExits = s.max_exits; }
+  if (all || wasLocked !== locked) draw(); // don't rebuild the grid under the user's finger
+}
+$("#addSite").onsubmit = (e) => {
+  e.preventDefault();
+  let d = $("#siteInput").value.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].replace(/^www\./, "");
+  if (!/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(d)) return say("That doesn't look like a website address.", true);
+  if (!sites.includes(d)) sites.push(d); $("#siteInput").value = ""; draw();
+};
+$("#addApp").onsubmit = (e) => {
+  e.preventDefault(); const a = $("#appInput").value.trim();
+  if (!/^[A-Za-z0-9 ._-]{1,40}$/.test(a)) return say("Use the app's exact name (letters, numbers, spaces).", true);
+  if (!apps.includes(a)) apps.push(a); $("#appInput").value = ""; draw();
+};
+$("#exMinus").onclick = () => { maxExits = Math.max(0, maxExits - 1); draw(); };
+$("#exPlus").onclick = () => { maxExits = Math.min(20, maxExits + 1); draw(); };
+$("#save").onclick = async () => {
+  try { apply(await api("/settings", { blocked_sites: sites, blocked_apps: apps, max_exits: maxExits }), true); say("Saved. The laptop picks this up on the next lock."); }
+  catch (e) { say(e.message, true); }
+};
+$("#reset").onclick = async () => { try { apply(await api("/reset", {}), false); say("Exits refilled."); } catch (e) { say(e.message, true); } };
+$("#origin").textContent = $("#origin2").textContent = location.origin;
+api("/state").then((s) => apply(s, true)).catch(() => say("Can't reach the Pi server.", true));
+setInterval(() => api("/state").then((s) => apply(s, false)).catch(() => {}), 3000);
+</script>
+</body>
+</html>

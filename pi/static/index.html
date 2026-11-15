@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Lock In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ink: #111211;
+    --panel: #1b1c1a;
+    --panel-2: #242522;
+    --line: #34362f;
+    --paper: #f4f5f1;
+    --muted: #9a9d92;
+    --signal: #e7483f;
+    --moss: #7fa07f;
+    --cyan: #00c2bd;
+    --amber: #f2b33d;
+    --display: "Archivo Black", "Arial Black", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --sans: Inter, system-ui, -apple-system, sans-serif;
+    --u: min(1vw, 1.6667vh); /* 1u = 8px on an 800x480 screen, scales to any size */
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--paper);
+    font-family: var(--sans); user-select: none; -webkit-user-select: none; touch-action: manipulation; overscroll-behavior: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+  .mono { font-family: var(--mono); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+
+  #app { position: fixed; inset: 0; padding: calc(2.4 * var(--u)) calc(3 * var(--u)); display: flex; flex-direction: column; }
+  .view { display: none; flex: 1; min-height: 0; flex-direction: column; gap: calc(1.6 * var(--u)); }
+  body.idle #idle, body.locked #locked { display: flex; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: calc(1.4 * var(--u)); padding: calc(1.6 * var(--u)) calc(2 * var(--u)); min-height: 0; }
+  .card h3 { margin: 0 0 calc(1 * var(--u)); font: 600 calc(1.4 * var(--u)) var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+
+  /* ---------- IDLE ---------- */
+  .idle-top { display: flex; align-items: center; gap: calc(2.4 * var(--u)); }
+  .clock { font: 400 calc(11 * var(--u))/0.9 var(--display); letter-spacing: -.01em; }
+  .date { font-size: calc(2.2 * var(--u)); color: var(--muted); line-height: 1.3; }
+  .date b { display: block; color: var(--paper); font-weight: 600; }
+  .idle-top .face-wrap { margin-left: auto; width: calc(17 * var(--u)); }
+  .idle-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: calc(1.6 * var(--u)); }
+  .idle-right { display: flex; flex-direction: column; gap: calc(1.6 * var(--u)); min-height: 0; }
+
+  .todos { overflow: hidden; display: flex; flex-direction: column; }
+  .todos ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+  .todos li { display: flex; align-items: center; gap: calc(1.2 * var(--u)); padding: calc(1 * var(--u)) 0; border-bottom: 1px solid var(--line); font-size: calc(2.1 * var(--u)); }
+  .todos li:last-child { border-bottom: 0; }
+  .check { flex: none; width: calc(3.2 * var(--u)); height: calc(3.2 * var(--u)); border: 2px solid var(--muted); border-radius: calc(.8 * var(--u)); display: grid; place-items: center; }
+  .todos li.done .check { background: var(--moss); border-color: var(--moss); }
+  .todos li.done .check::after { content: "✓"; color: var(--ink); font-weight: 700; font-size: calc(2 * var(--u)); }
+  .todos li.done .t { text-decoration: line-through; color: var(--muted); }
+  .todos .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .todos .from { font: 600 calc(1.2 * var(--u)) var(--mono); color: var(--cyan); text-transform: uppercase; margin-left: calc(.6 * var(--u)); }
+  .todos .x { flex: none; width: calc(4 * var(--u)); height: calc(4 * var(--u)); color: var(--muted); font-size: calc(2.4 * var(--u)); }
+  .empty { color: var(--muted); font-size: calc(1.8 * var(--u)); }
+
+  .music .row { display: flex; align-items: center; gap: calc(1.2 * var(--u)); }
+  .music .title { flex: 1; min-width: 0; font-weight: 600; font-size: calc(2 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ctrl { width: calc(5.6 * var(--u)); height: calc(5.6 * var(--u)); border-radius: 50%; background: var(--panel-2); display: grid; place-items: center; font-size: calc(2.2 * var(--u)); }
+  .ctrl.play { background: var(--paper); color: var(--ink); }
+  .music input[type=range] { width: 100%; margin-top: calc(1.2 * var(--u)); accent-color: var(--cyan); }
+
+  .alarm .row { display: flex; align-items: center; gap: calc(1 * var(--u)); }
+  .alarm .time { font: 400 calc(4.4 * var(--u)) var(--display); min-width: calc(15 * var(--u)); text-align: center; }
+  .alarm .step { width: calc(4.6 * var(--u)); height: calc(4.6 * var(--u)); border-radius: calc(1 * var(--u)); background: var(--panel-2); font-size: calc(2 * var(--u)); font-weight: 700; }
+  .toggle { margin-left: auto; padding: calc(1 * var(--u)) calc(1.8 * var(--u)); border-radius: 99px; background: var(--panel-2); font: 600 calc(1.5 * var(--u)) var(--mono); }
+  .toggle.on { background: var(--amber); color: var(--ink); }
+
+  .start { display: flex; align-items: center; gap: calc(1.2 * var(--u)); }
+  .start .label { font: 400 calc(2.6 * var(--u)) var(--display); margin-right: calc(.8 * var(--u)); }
+  .start button.go { flex: 1; height: calc(7.4 * var(--u)); border-radius: calc(1.4 * var(--u)); background: var(--paper); color: var(--ink); font: 400 calc(2.8 * var(--u)) var(--display); }
+  .start button.go.demo { background: var(--signal); color: var(--paper); }
+  .start button.go:active, .ctrl:active, .step:active { transform: scale(.96); }
+  .gear { width: calc(7.4 * var(--u)); height: calc(7.4 * var(--u)); border-radius: calc(1.4 * var(--u)); background: var(--panel); border: 1px solid var(--line); font-size: calc(3 * var(--u)); color: var(--muted); display: grid; place-items: center; text-decoration: none; }
+
+  /* ---------- LOCKED ---------- */
+  .locked-top { display: flex; align-items: center; justify-content: space-between; font: 600 calc(1.6 * var(--u)) var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+  .locked-top .tag { color: var(--signal); display: flex; align-items: center; gap: calc(1 * var(--u)); }
+  .locked-top .tag::before { content: ""; width: calc(1.2 * var(--u)); height: calc(1.2 * var(--u)); border-radius: 50%; background: var(--signal); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .exits { display: flex; align-items: center; gap: calc(.7 * var(--u)); color: var(--muted); }
+  .exits i { width: calc(1.4 * var(--u)); height: calc(1.4 * var(--u)); border-radius: 50%; border: 2px solid var(--muted); }
+  .exits i.left { background: var(--paper); border-color: var(--paper); }
+  .locked-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 40% 1fr; gap: calc(2.4 * var(--u)); align-items: center; }
+  .count { display: flex; flex-direction: column; gap: calc(1 * var(--u)); }
+  .countdown { font: 400 calc(15 * var(--u))/0.85 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .until { color: var(--muted); font-size: calc(2.2 * var(--u)); }
+  .bar { height: calc(1.2 * var(--u)); background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-top: calc(.6 * var(--u)); }
+  .bar div { height: 100%; width: 0; background: var(--signal); transition: width 1s linear; }
+  .locked-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.6 * var(--u)); min-height: calc(13 * var(--u)); }
+  .msg .text, .digest .text { font-size: calc(1.9 * var(--u)); line-height: 1.35; max-height: calc(8 * var(--u)); overflow: hidden; }
+  .digest .text { white-space: pre-line; font-size: calc(1.7 * var(--u)); }
+  .msg .who { color: var(--cyan); }
+  .msg.urgent { background: var(--signal); border-color: var(--signal); }
+  .msg.urgent h3, .msg.urgent .who { color: var(--paper); }
+  .free { margin-top: calc(1 * var(--u)); width: 100%; height: calc(5.4 * var(--u)); border-radius: calc(1 * var(--u)); background: var(--paper); color: var(--signal); font: 400 calc(2.2 * var(--u)) var(--display); display: none; }
+  .msg.urgent .free { display: block; }
+  .locked-foot { display: flex; gap: calc(1.6 * var(--u)); align-items: stretch; }
+  .locked-foot .slot { flex: 1; }
+  .locked-foot .music { padding: calc(1 * var(--u)) calc(1.6 * var(--u)); }
+  .locked-foot .music h3, .locked-foot .music input { display: none; }
+  .locked-foot .ctrl { width: calc(4.6 * var(--u)); height: calc(4.6 * var(--u)); }
+  .hold { position: relative; overflow: hidden; padding: 0 calc(2 * var(--u)); border-radius: calc(1.4 * var(--u)); border: 1px solid var(--line); color: var(--muted); font: 600 calc(1.4 * var(--u)) var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+  .hold span { position: relative; z-index: 1; }
+  .hold::before { content: ""; position: absolute; inset: 0; width: var(--p, 0%); background: var(--signal); }
+
+  /* ---------- FACE ---------- */
+  .face-wrap { aspect-ratio: 200 / 150; width: 100%; }
+  .face { width: 100%; height: 100%; overflow: visible; }
+  .face .head { fill: var(--panel); stroke: var(--line); stroke-width: 3; }
+  .face .eyes { animation: blink 5s infinite; transform-box: fill-box; transform-origin: center; }
+  .face .look { animation: look 9s ease-in-out infinite; }
+  .face .eye { fill: var(--paper); transform-box: fill-box; transform-origin: center; transition: transform .4s; }
+  .face .brow { stroke: var(--paper); stroke-width: 6; stroke-linecap: round; fill: none; opacity: 0; transition: opacity .3s, d .4s; }
+  .face .mouth { stroke: var(--paper); stroke-width: 7; stroke-linecap: round; fill: none; transition: d .4s; d: path("M70 104 Q100 128 130 104"); }
+  .face .cheek { fill: var(--signal); opacity: 0; transition: opacity .4s; }
+  @keyframes blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.1); } }
+  @keyframes look { 0%, 20%, 100% { transform: translateX(0); } 30%, 45% { transform: translateX(-7px); } 60%, 75% { transform: translateX(7px); } }
+  .face.focused .eye { transform: scaleY(.45); }
+  .face.focused .mouth { d: path("M80 108 Q100 110 120 108"); }
+  .face.focused .look { animation: none; }
+  .face.worried .brow { opacity: 1; }
+  .face.worried .brow.l { d: path("M50 38 L80 27"); }
+  .face.worried .brow.r { d: path("M150 38 L120 27"); }
+  .face.worried .mouth { d: path("M86 112 Q100 100 114 112"); }
+  .face.sad .eye { transform: scaleY(.7) translateY(4px); }
+  .face.sad .brow { opacity: 1; }
+  .face.sad .brow.l { d: path("M50 40 L80 30"); }
+  .face.sad .brow.r { d: path("M150 40 L120 30"); }
+  .face.sad .mouth { d: path("M72 118 Q100 94 128 118"); }
+  .face.proud .eye { transform: scaleY(.25); }
+  .face.proud .mouth { d: path("M62 98 Q100 138 138 98"); }
+  .face.proud .cheek, .face.happy .cheek { opacity: .55; }
+  .face.sad .look, .face.worried .look { animation: none; }
+
+  /* ---------- overlays ---------- */
+  #overlay { position: fixed; inset: 0; background: rgba(17,18,17,.94); display: none; align-items: center; justify-content: center; z-index: 10; padding: calc(4 * var(--u)); }
+  #overlay.show { display: flex; }
+  #overlay .box { max-width: calc(80 * var(--u)); text-align: center; }
+  #overlay h2 { margin: 0 0 calc(1.6 * var(--u)); font: 400 calc(6 * var(--u))/1 var(--display); }
+  #overlay p { margin: 0 0 calc(2.4 * var(--u)); font-size: calc(2.4 * var(--u)); line-height: 1.45; color: #d6d8d0; white-space: pre-line; }
+  #overlay button { padding: calc(1.6 * var(--u)) calc(5 * var(--u)); border-radius: 99px; background: var(--paper); color: var(--ink); font: 400 calc(2.4 * var(--u)) var(--display); }
+  #toast { position: fixed; left: 50%; bottom: calc(3 * var(--u)); transform: translate(-50%, 40%); opacity: 0; visibility: hidden; background: var(--signal); color: var(--paper); padding: calc(1.4 * var(--u)) calc(2.6 * var(--u)); border-radius: 99px; font-weight: 600; font-size: calc(2 * var(--u)); transition: transform .3s, opacity .3s, visibility .3s; z-index: 20; }
+  #toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
+  #offline { position: fixed; top: calc(1 * var(--u)); right: calc(1 * var(--u)); font: 600 calc(1.3 * var(--u)) var(--mono); color: var(--amber); display: none; }
+  body.offline #offline { display: block; }
+</style>
+</head>
+<body class="idle">
+<div id="app">
+
+  <!-- =================== IDLE =================== -->
+  <section class="view" id="idle">
+    <div class="idle-top">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+      <div class="face-wrap" data-face></div>
+    </div>
+    <div class="idle-grid">
+      <div class="card todos">
+        <h3><span>To-do</span><span id="todoCount"></span></h3>
+        <ul id="todoList"></ul>
+      </div>
+      <div class="idle-right">
+        <div id="idleMusicSlot"></div>
+        <div class="card alarm">
+          <h3><span>Alarm</span></h3>
+          <div class="row">
+            <button class="step" data-alarm="-60">−h</button>
+            <button class="step" data-alarm="-5">−5</button>
+            <div class="time" id="alarmTime">07:30</div>
+            <button class="step" data-alarm="5">+5</button>
+            <button class="step" data-alarm="60">+h</button>
+            <button class="toggle" id="alarmToggle">OFF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="start">
+      <span class="label">Lock in</span>
+      <button class="go demo" data-min="1">1 min</button>
+      <button class="go" data-min="25">25 min</button>
+      <button class="go" data-min="50">50 min</button>
+      <a class="gear" href="/setup" title="Setup">⚙</a>
+    </div>
+  </section>
+
+  <!-- =================== LOCKED =================== -->
+  <section class="view" id="locked">
+    <div class="locked-top">
+      <span class="tag">Locked in</span>
+      <span class="exits" id="exits"></span>
+    </div>
+    <div class="locked-main">
+      <div class="face-wrap" data-face></div>
+      <div class="count">
+        <div class="countdown" id="countdown">00:00</div>
+        <div class="until" id="until"></div>
+        <div class="bar"><div id="bar"></div></div>
+      </div>
+    </div>
+    <div class="locked-bottom">
+      <div class="card msg" id="msg">
+        <h3><span id="msgTitle">Messages</span></h3>
+        <div class="text" id="msgText"><span class="empty">Your agent is answering for you.</span></div>
+        <button class="free" id="freeBtn">Unlock free</button>
+      </div>
+      <div class="card digest">
+        <h3><span>Digest</span><span id="digestAge"></span></h3>
+        <div class="text" id="digestText"><span class="empty">A summary lands here every few minutes if something matters.</span></div>
+      </div>
+    </div>
+    <div class="locked-foot">
+      <div class="slot" id="lockedMusicSlot"></div>
+      <button class="hold" id="holdBtn"><span>Hold for emergency exit</span></button>
+    </div>
+  </section>
+</div>
+
+<!-- music card: moved between the idle and locked slots, so playback never stops -->
+<template id="musicTpl">
+  <div class="card music" id="music">
+    <h3><span>Music</span><span id="trackNo"></span></h3>
+    <div class="row">
+      <div class="title" id="trackTitle">No music yet</div>
+      <button class="ctrl" id="prevBtn">⏮</button>
+      <button class="ctrl play" id="playBtn">▶</button>
+      <button class="ctrl" id="nextBtn">⏭</button>
+    </div>
+    <input type="range" id="volume" min="0" max="1" step="0.05" value="0.7">
+  </div>
+</template>
+
+<template id="faceTpl">
+  <svg class="face happy" viewBox="0 0 200 150" aria-hidden="true">
+    <rect class="head" x="6" y="6" width="188" height="138" rx="34"/>
+    <g class="look">
+      <g class="eyes">
+        <rect class="eye" x="54" y="44" width="26" height="36" rx="13"/>
+        <rect class="eye" x="120" y="44" width="26" height="36" rx="13"/>
+      </g>
+      <path class="brow l" d="M48 34 L80 34"/>
+      <path class="brow r" d="M152 34 L120 34"/>
+    </g>
+    <circle class="cheek" cx="40" cy="98" r="10"/>
+    <circle class="cheek" cx="160" cy="98" r="10"/>
+    <path class="mouth"/>
+  </svg>
+</template>
+
+<div id="overlay"><div class="box"><h2 id="ovTitle"></h2><p id="ovText"></p><button id="ovBtn">Got it</button></div></div>
+<div id="toast"></div>
+<div id="offline">PI SERVER OFFLINE</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const pad = (n) => String(n).padStart(2, "0");
+let S = null;               // last state from the Pi
+let offset = 0;             // server clock minus browser clock (seconds)
+let lastMode = null;
+let lastTodosKey = "";
+let seenFinalDigestAt = 0;
+const nowS = () => Date.now() / 1000 + offset;
+
+// ---------- storage (never trusted to work) ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- API ----------
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+}
+const post = (path, body) => api(path, { method: "POST", body: JSON.stringify(body || {}) });
+
+function toast(text) {
+  const t = $("#toast"); t.textContent = text; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+// ---------- sound (WebAudio, no files needed) ----------
+let ctx;
+function audio() { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; }
+function tone(freq, start, dur, vol = 0.18, type = "sine") {
+  const a = audio(), o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.value = freq; o.connect(g); g.connect(a.destination);
+  const t = a.currentTime + start;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const sounds = {
+  lock() { tone(440, 0, .15, .2, "square"); tone(330, .12, .25, .2, "square"); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .14, .5)); },
+  alert() { [880, 0, 880].forEach((f, i) => f && tone(f, i * .18, .16, .22, "triangle")); },
+};
+document.addEventListener("pointerdown", () => audio(), { once: true });
+
+// ---------- face ----------
+document.querySelectorAll("[data-face]").forEach((el) => el.appendChild($("#faceTpl").content.cloneNode(true)));
+function setFace(mood) { document.querySelectorAll(".face").forEach((f) => (f.className.baseVal = "face " + mood)); }
+
+// ---------- music ----------
+$("#idleMusicSlot").appendChild($("#musicTpl").content.cloneNode(true));
+const player = new Audio();
+let tracks = [], ti = 0;
+player.volume = store.get("lockin_volume", 0.7);
+$("#volume").value = player.volume;
+async function loadTracks() {
+  try { tracks = await api("/music"); } catch { tracks = []; }
+  showTrack();
+}
+function showTrack() {
+  $("#trackTitle").textContent = tracks.length ? tracks[ti].title : "Add MP3s to pi/static/music";
+  $("#trackNo").textContent = tracks.length ? `${ti + 1}/${tracks.length}` : "";
+  $("#playBtn").textContent = player.paused ? "▶" : "❚❚";
+}
+function playIdx(i) {
+  if (!tracks.length) return;
+  ti = (i + tracks.length) % tracks.length;
+  player.src = tracks[ti].url; player.play().catch(() => {}); showTrack();
+}
+$("#playBtn").onclick = () => {
+  if (!tracks.length) return toast("No music in pi/static/music yet");
+  if (!player.src) return playIdx(ti);
+  player.paused ? player.play() : player.pause();
+};
+$("#prevBtn").onclick = () => playIdx(ti - 1);
+$("#nextBtn").onclick = () => playIdx(ti + 1);
+$("#volume").oninput = (e) => { player.volume = +e.target.value; store.set("lockin_volume", player.volume); };
+player.onended = () => playIdx(ti + 1);
+player.onplay = player.onpause = showTrack;
+
+// ---------- alarm ----------
+let alarm = store.get("lockin_alarm", { on: false, mins: 7 * 60 + 30 });
+let alarmRungKey = "", alarmBeep = null;
+function showAlarm() {
+  $("#alarmTime").textContent = `${pad(Math.floor(alarm.mins / 60))}:${pad(alarm.mins % 60)}`;
+  const t = $("#alarmToggle"); t.textContent = alarm.on ? "ON" : "OFF"; t.classList.toggle("on", alarm.on);
+}
+document.querySelectorAll("[data-alarm]").forEach((b) => (b.onclick = () => {
+  alarm.mins = (alarm.mins + +b.dataset.alarm + 1440) % 1440; store.set("lockin_alarm", alarm); showAlarm();
+}));
+$("#alarmToggle").onclick = () => { alarm.on = !alarm.on; store.set("lockin_alarm", alarm); showAlarm(); };
+function checkAlarm(d) {
+  if (!alarm.on) return;
+  const key = d.toDateString() + alarm.mins;
+  if (d.getHours() * 60 + d.getMinutes() === alarm.mins && alarmRungKey !== key) {
+    alarmRungKey = key;
+    sounds.alert(); alarmBeep = setInterval(sounds.alert, 1200);
+    overlay("Alarm", `It's ${$("#alarmTime").textContent}.`, "Stop", () => { clearInterval(alarmBeep); alarmBeep = null; });
+  }
+}
+
+// ---------- overlay ----------
+function overlay(title, text, btn, onClose) {
+  $("#ovTitle").textContent = title; $("#ovText").textContent = text; $("#ovBtn").textContent = btn || "Got it";
+  $("#overlay").classList.add("show");
+  $("#ovBtn").onclick = () => { $("#overlay").classList.remove("show"); onClose && onClose(); };
+}
+
+// ---------- start buttons ----------
+document.querySelectorAll("[data-min]").forEach((b) => (b.onclick = async () => {
+  try { render(await post("/lock", { minutes: +b.dataset.min })); }
+  catch (e) { toast(e.message); }
+}));
+
+// ---------- urgent free unlock ----------
+$("#freeBtn").onclick = async () => {
+  try { render(await post("/unlock", { reason: "urgent" })); } catch (e) { toast(e.message); }
+};
+
+// ---------- hold-to-exit (uses 1 emergency exit) ----------
+(() => {
+  const btn = $("#holdBtn"); let start = 0, raf = 0;
+  const reset = () => { cancelAnimationFrame(raf); start = 0; btn.style.setProperty("--p", "0%"); };
+  const step = async () => {
+    const p = Math.min(1, (performance.now() - start) / 2000);
+    btn.style.setProperty("--p", p * 100 + "%");
+    if (p < 1) { raf = requestAnimationFrame(step); return; }
+    reset();
+    try { render(await post("/unlock", { reason: "emergency" })); toast(`Emergency exit used. ${S.exits_left} left.`); }
+    catch (e) { toast(e.message); }
+  };
+  btn.addEventListener("pointerdown", () => { if (!S || S.exits_left <= 0) return toast("No emergency exits left"); start = performance.now(); raf = requestAnimationFrame(step); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, reset));
+})();
+
+// ---------- to-dos ----------
+function renderTodos(todos) {
+  const key = JSON.stringify(todos);
+  if (key === lastTodosKey) return;
+  lastTodosKey = key;
+  const ul = $("#todoList"); ul.innerHTML = "";
+  if (!todos.length) { ul.innerHTML = '<li class="empty">Nothing yet. Your agent adds tasks from messages.</li>'; }
+  todos.slice().reverse().forEach((t) => {
+    const li = document.createElement("li"); if (t.done) li.className = "done";
+    li.innerHTML = `<span class="check"></span><span class="t"></span><button class="x">×</button>`;
+    li.querySelector(".t").textContent = t.text;
+    if (t.from && t.from !== "Me") { const f = document.createElement("span"); f.className = "from"; f.textContent = t.from; li.querySelector(".t").appendChild(f); }
+    li.querySelector(".check").onclick = li.querySelector(".t").onclick = async () => { try { render(await post(`/todo/${t.id}/toggle`)); } catch (e) { toast(e.message); } };
+    li.querySelector(".x").onclick = async () => { try { render(await api(`/todo/${t.id}`, { method: "DELETE" })); } catch (e) { toast(e.message); } };
+    ul.appendChild(li);
+  });
+  const open = todos.filter((t) => !t.done).length;
+  $("#todoCount").textContent = todos.length ? `${open} open` : "";
+}
+
+// ---------- render from state ----------
+function ago(at) { const s = Math.max(0, Math.round(nowS() - at)); return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`; }
+function render(s) {
+  S = s;
+  document.body.classList.remove("offline");
+  const mode = s.mode;
+  if (mode !== lastMode) {
+    document.body.className = mode;
+    const slot = mode === "locked" ? "#lockedMusicSlot" : "#idleMusicSlot";
+    $(slot).appendChild($("#music"));
+    if (lastMode === "idle" && mode === "locked") sounds.lock();
+    if (lastMode === "locked" && mode === "idle") sounds.done();
+    lastMode = mode;
+  }
+  setFace(s.face || "happy");
+  renderTodos(s.todos || []);
+
+  // exits
+  const ex = $("#exits"); ex.innerHTML = "";
+  for (let i = 0; i < s.max_exits; i++) { const d = document.createElement("i"); if (i < s.exits_left) d.className = "left"; ex.appendChild(d); }
+  ex.insertAdjacentText("beforeend", ` ${s.exits_left} exits`);
+
+  // message
+  const m = s.last_message, card = $("#msg");
+  card.classList.toggle("urgent", !!(m && m.urgent && s.urgent_pending));
+  if (m) {
+    $("#msgTitle").textContent = m.urgent ? "Urgent" : "Latest message";
+    $("#msgText").innerHTML = "";
+    const who = document.createElement("b"); who.className = "who"; who.textContent = m.from + ": ";
+    $("#msgText").append(who, document.createTextNode(m.text));
+    if (m.urgent && s.urgent_pending && card.dataset.at !== String(m.at)) { card.dataset.at = m.at; sounds.alert(); }
+  }
+
+  // digest
+  const d = s.last_digest;
+  if (d && mode === "locked") { $("#digestText").textContent = d.text; $("#digestAge").textContent = ago(d.at); }
+  if (mode === "locked" && !d) { $("#digestText").innerHTML = '<span class="empty">A summary lands here every few minutes if something matters.</span>'; $("#digestAge").textContent = ""; }
+  if (mode === "idle" && d && d.final && d.at !== seenFinalDigestAt && nowS() - d.at < 600) {
+    seenFinalDigestAt = d.at;
+    overlay("While you were locked in", d.text, "Nice");
+  }
+}
+
+// ---------- clocks ----------
+function tick() {
+  const d = new Date((nowS()) * 1000);
+  $("#clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  $("#date").innerHTML = `<b>${d.toLocaleDateString("en-US", { weekday: "long" })}</b>${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+  checkAlarm(d);
+  if (S && S.mode === "locked" && S.ends_at) {
+    const left = Math.max(0, Math.ceil(S.ends_at - nowS()));
+    const h = Math.floor(left / 3600), mm = Math.floor((left % 3600) / 60), ss = left % 60;
+    $("#countdown").textContent = h ? `${h}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
+    const end = new Date(S.ends_at * 1000);
+    $("#until").textContent = `until ${pad(end.getHours())}:${pad(end.getMinutes())} · phone + laptop locked`;
+    const total = S.ends_at - S.started_at;
+    $("#bar").style.width = `${Math.min(100, ((total - left) / total) * 100)}%`;
+  }
+}
+
+async function poll() {
+  try {
+    const s = await api("/state");
+    offset = s.server_time - Date.now() / 1000;
+    render(s);
+  } catch { document.body.classList.add("offline"); }
+}
+
+showAlarm(); loadTracks(); poll(); tick();
+setInterval(poll, 1000);
+setInterval(tick, 250);
+setInterval(loadTracks, 60000);
+</script>
+</body>
+</html>

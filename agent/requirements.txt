@@ -1,0 +1,4 @@
+python-telegram-bot[job-queue,rate-limiter]>=21.6
+google-genai>=1.0
+httpx>=0.25
+python-dotenv>=1.0

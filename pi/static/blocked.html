@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Locked In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;600&display=swap">
+<style>
+  :root { --paper: #f4f5f1; --ink: #161716; --signal: #e7483f; --moss: #4d684f; --muted: #9a9d92;
+    --display: "Archivo Black", "Arial Black", sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--ink); color: var(--paper); font-family: Inter, system-ui, sans-serif; display: grid; place-items: center; padding: 24px 16px; overflow: hidden; }
+  .shutter { position: fixed; inset: auto 0 0; height: var(--done, 0%); background: var(--signal); transition: height 1s linear; z-index: -1; opacity: .9; }
+  main { max-width: 720px; width: 100%; }
+  .eyebrow { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--signal); margin: 0 0 18px; display: flex; gap: 10px; align-items: center; }
+  .eyebrow::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; animation: p 1.6s infinite; }
+  @keyframes p { 50% { opacity: .2; } }
+  h1 { font: 400 clamp(48px, 11vw, 120px)/.88 var(--display); margin: 0; }
+  .site { margin: 22px 0 0; font-size: 18px; color: #c9ccc3; line-height: 1.5; }
+  .site b { color: var(--paper); }
+  .count { font: 400 clamp(56px, 14vw, 140px)/1 var(--display); margin: 28px 0 8px; font-variant-numeric: tabular-nums; }
+  .meta { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  a.go { display: none; margin-top: 28px; padding: 16px 28px; background: var(--paper); color: var(--ink); text-decoration: none; font: 400 18px var(--display); border-radius: 99px; }
+  body.free .eyebrow { color: #8fd18f; }
+  body.free a.go { display: inline-block; }
+  body.free .shutter { height: 0 !important; }
+</style>
+</head>
+<body>
+<div class="shutter" id="shutter"></div>
+<main>
+  <p class="eyebrow" id="eyebrow">Locked in</p>
+  <h1 id="title">The key is in the box.</h1>
+  <p class="site" id="site"></p>
+  <div class="count" id="count">--:--</div>
+  <div class="meta" id="meta"></div>
+  <a class="go" id="go" href="#">Continue</a>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const pad = (n) => String(n).padStart(2, "0");
+const params = new URLSearchParams(location.search);
+const site = (params.get("site") || "").replace(/[^a-z0-9.-]/gi, "");
+let S = null, offset = 0;
+if (site) { $("#site").innerHTML = ""; $("#site").append("You tried to open ", Object.assign(document.createElement("b"), { textContent: site }), ". It opens again when the box unlocks."); }
+async function poll() {
+  try {
+    const r = await fetch("/state", { cache: "no-store" }); S = await r.json(); offset = S.server_time - Date.now() / 1000;
+    if (S.mode !== "locked") {
+      document.body.classList.add("free");
+      $("#eyebrow").textContent = "Unlocked"; $("#title").textContent = "Session over. Nice work.";
+      $("#count").textContent = "00:00"; $("#meta").textContent = "";
+      if (site) { $("#go").href = "https://" + site; $("#go").textContent = "Continue to " + site; $("#site").textContent = site + " is open again."; }
+      else { $("#go").style.display = "none"; }
+    } else {
+      document.body.classList.remove("free");
+      $("#eyebrow").textContent = "Locked in"; $("#title").textContent = "The key is in the box.";
+      $("#meta").textContent = `${S.exits_left} emergency exits left · text your agent "emergency"`;
+    }
+  } catch { $("#meta").textContent = "Can't reach the box right now. Still locked until the timer ends."; }
+}
+function tick() {
+  if (!S || S.mode !== "locked" || !S.ends_at) return;
+  const left = Math.max(0, Math.ceil(S.ends_at - (Date.now() / 1000 + offset)));
+  const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
+  $("#count").textContent = h ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  const total = S.ends_at - S.started_at;
+  $("#shutter").style.setProperty("--done", `${Math.min(100, ((total - left) / total) * 100)}%`);
+}
+poll(); setInterval(poll, 2000); setInterval(tick, 250);
+</script>
+</body>
+</html>
