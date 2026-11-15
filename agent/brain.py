@@ -3,6 +3,8 @@
 If Gemini is down, slow, or there's no key, the simple rules below take over, so the
 demo never stalls waiting on an LLM.
 """
+from __future__ import annotations  # keeps the `X | None` hints working on Python 3.9
+
 import asyncio
 import json
 import logging

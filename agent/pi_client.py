@@ -1,4 +1,6 @@
 """Tiny client for the Pi server (see ../CONTRACT.md). Every call returns (ok, data)."""
+from __future__ import annotations  # keeps the `X | None` hints working on Python 3.9
+
 import httpx
 
 
