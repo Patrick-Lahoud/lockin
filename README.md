@@ -3,7 +3,8 @@
 **Lock both. The key is in the box.** A desk box that locks your phone *and* your laptop with
 one timer, while a Telegram agent answers your messages.
 
-* `STEPS.md`: **start here.** The step-by-step checklist for today
+* `SIMPLE_PLAN.md`: **start here.** The whole plan in super simple words (no hardware experience needed)
+* `STEPS.md`: the step-by-step checklist for today
 * `ARCHITECTURE.md`: the full blueprint (diagram, decisions, build plan, wiring, fallbacks)
 * `CONTRACT.md`: the API everyone builds against
 * `SECURITY.md`: security review + what's fixed / still open

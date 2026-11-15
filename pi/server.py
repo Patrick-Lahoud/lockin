@@ -65,7 +65,8 @@ DEFAULT_STATE = {
     "max_exits": 5,
     "lid_closed": True,
     "blocked_sites": ["instagram.com", "tiktok.com", "linkedin.com"],
-    "blocked_apps": [],
+    # Demo: the same three, as apps (iPhone apps can run on Apple-silicon Macs; Store apps on Windows)
+    "blocked_apps": ["Instagram", "TikTok", "LinkedIn"],
     "todos": [],
     "last_message": None,
     "urgent_pending": False,

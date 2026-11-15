@@ -382,9 +382,22 @@ async def watch(ctx: ContextTypes.DEFAULT_TYPE) -> None:
 def main() -> None:
     if not TOKEN:
         raise SystemExit("Set TELEGRAM_BOT_TOKEN in agent/.env (get it from @BotFather). See README.md.")
+    async def post_init(application: Application) -> None:
+        # The "/" menu people see in Telegram
+        await application.bot.set_my_commands(
+            [
+                ("start", "Set up / help"),
+                ("status", "Is the box locked? Exits left?"),
+                ("lock", "Lock in: /lock 25"),
+                ("emergency", "Leave early (uses 1 exit)"),
+                ("free", "Free unlock for an urgent message"),
+            ]
+        )
+
     app = (
         Application.builder()
         .token(TOKEN)
+        .post_init(post_init)
         .rate_limiter(AIORateLimiter(max_retries=2))  # stays under Telegram's own send limits
         .concurrent_updates(8)  # a slow Gemini call doesn't block other people's messages
         .build()

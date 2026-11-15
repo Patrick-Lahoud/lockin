@@ -1,16 +1,18 @@
 # Your steps (Dimitri)
 
+> New to hardware? Read **[SIMPLE_PLAN.md](SIMPLE_PLAN.md)** first: the whole plan in super simple words.
+
 Tick these off in order. Everything else is already built. Details for each part are in that folder's README.
 
 ---
 
 ## Right now (15 min)
 
-- [ ] **1. Get push access.** Ask Patrick: GitHub → `Patrick-Lahoud/lockin` → Settings → Collaborators → add **dbronnikov07**.
+- [x] **1. Get push access.** Ask Patrick: GitHub → `Patrick-Lahoud/lockin` → Settings → Collaborators → add **dbronnikov07**.
   (The repo is **public**, so the key must never go in it. The pre-commit hook blocks that.)
-- [ ] **2. Create the Telegram bot.** Telegram → **@BotFather** → `/newbot` → name `Lock In` → username ending in `bot`.
+- [x] **2. Create the Telegram bot.** Done: **@locktf_in_bot**. Telegram → **@BotFather** → `/newbot` → name `Lock In` → username ending in `bot`.
   Copy the token it gives you.
-- [ ] **3. Put the token in `agent/.env`.** Open the file and paste it after `TELEGRAM_BOT_TOKEN=`.
+- [x] **3. Put the token in `agent/.env`.** Done and tested. Open the file and paste it after `TELEGRAM_BOT_TOKEN=`.
   **Never paste it in chat.** The Gemini key is already there and tested (`gemini-3.5-flash`, ~1 s replies).
 - [ ] **4. Run the agent:**
   ```bash
