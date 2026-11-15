@@ -10,6 +10,8 @@ Who talks to the bot
 
 Run:  python bot.py   (settings in .env, see .env.example)
 """
+from __future__ import annotations  # keeps the `X | None` hints working on Python 3.9
+
 import asyncio
 import json
 import logging

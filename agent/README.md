@@ -18,8 +18,11 @@ cd lock-in/agent
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp .env.example .env        # then open .env and paste the token + Gemini key
+.venv/bin/python doctor.py  # checks Telegram, Gemini and the Pi before you run it
 .venv/bin/python bot.py
 ```
+It runs on a **computer**, not the Pi: it polls Telegram, asks Gemini whether each message matters,
+and pushes the result to the box over HTTP.
 Before the Pi is ready, point it at a local server: run `cd ../pi && .venv/bin/python server.py`
 in another terminal and set `PI_URL=http://localhost:8000` in `.env`.
 

@@ -11,6 +11,8 @@ Most of them are noise. This module throws away the junk for free, before Gemini
 
 Only what survives goes to Gemini, in one batch call.
 """
+from __future__ import annotations  # keeps the `X | None` hints working on Python 3.9
+
 import re
 import time
 from collections import defaultdict, deque

@@ -6,6 +6,8 @@ Everything here protects the Gemini key and the bot from being abused:
   * TTLCache       the same message text isn't sent to Gemini twice within 10 minutes.
   * RedactSecrets  a logging filter: the bot token and API key can never appear in logs.
 """
+from __future__ import annotations  # keeps the `X | None` hints working on Python 3.9
+
 import asyncio
 import json
 import logging

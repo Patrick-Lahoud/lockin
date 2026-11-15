@@ -48,6 +48,20 @@ Remove: `./uninstall_mac.sh`
 PowerShell as Administrator: `powershell -ExecutionPolicy Bypass -File install_windows.ps1 -PiUrl http://lockin.local:8000`
 (hosts block + quitting apps; the open-tab kicker is macOS-only).
 
+## The same screen as the box
+While the box is locked, the guard shows the Pi's own screen (`http://<pi>:8000/`) in a
+borderless full-screen window, so the laptop looks exactly like the Pi. It points at the Pi
+instead of keeping a copy of the UI, so the two can never drift apart. It closes on unlock,
+and blocked tabs land on that same screen.
+
+```bash
+python3 lockin_guard.py screen --pi http://lockin.local:8000     # run it by hand to try
+```
+
+Needs Chrome, Edge, Brave or Chromium (Safari can't open an app window). It runs as **you**,
+not as root: a root/`SYSTEM` service can't open a window on your desktop. Both installers set
+it up as a login agent next to the guard.
+
 ## Demo tips
 * Open Instagram **after** pressing start. Browsers keep already-open connections alive for a bit; the tab kicker handles open tabs within a second.
 * Firefox with "DNS over HTTPS" still respects the hosts file by default.

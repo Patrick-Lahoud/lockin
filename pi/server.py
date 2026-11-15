@@ -12,6 +12,9 @@ import json
 import os
 import re
 import secrets
+import shutil
+import socket
+import subprocess
 import sys
 import time
 from collections import defaultdict, deque
@@ -523,6 +526,110 @@ async def list_music():
     MUSIC.mkdir(exist_ok=True)
     files = sorted(p.name for p in MUSIC.iterdir() if p.suffix.lower() in (".mp3", ".m4a", ".ogg", ".wav"))
     return [{"title": Path(f).stem.replace("_", " ").replace("-", " "), "url": "/static/music/" + quote(f)} for f in files]
+
+
+# ---------------------------------------------------------------- extras for the box screen
+# Additive only: the contract's fields and endpoints are untouched. These exist so the
+# screen's Wi-Fi and Bluetooth menus have something real to read on the Pi.
+
+
+def wifi_ssid():
+    for cmd in (["iwgetid", "-r"], ["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"]):
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=2).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if cmd[0] == "iwgetid":
+            if out.strip():
+                return out.strip()
+        else:
+            for line in out.splitlines():
+                if line.startswith("yes:"):
+                    return line.split(":", 1)[1].strip()
+    return None
+
+
+def local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # no packet is sent; picks the outbound interface
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return None
+
+
+# NOTE: these run slow system commands (bluetoothctl can take 20 s). They are plain `def` (FastAPI runs
+# them in a worker thread) or use asyncio.to_thread, so they can NEVER freeze the timer, /state or unlocks.
+@app.get("/network")
+def get_network():
+    return {"ssid": wifi_ssid(), "ip": local_ip(), "hostname": socket.gethostname()}
+
+
+def _bt(*args, timeout=8):
+    exe = shutil.which("bluetoothctl")
+    if not exe:
+        raise HTTPException(503, "Bluetooth is only available on the Pi")
+    try:
+        r = subprocess.run([exe, *args], capture_output=True, text=True, timeout=timeout)
+    except subprocess.SubprocessError:
+        raise HTTPException(503, "bluetoothctl timed out")
+    return r.stdout + r.stderr
+
+
+def _bt_devices():
+    found = []
+    for line in _bt("devices").splitlines():
+        m = re.match(r"Device ([0-9A-F:]{17}) (.+)$", line.strip())
+        if m:
+            found.append({"mac": m.group(1), "name": m.group(2).strip()})
+    return found
+
+
+@app.get("/bluetooth/status")
+def bt_status():
+    if not shutil.which("bluetoothctl"):
+        return {"available": False, "powered": False, "devices": [], "connected": None}
+    powered = "Powered: yes" in _bt("show")
+    devices, connected = [], None
+    for d in _bt_devices():
+        detail = _bt("info", d["mac"])
+        is_connected = "Connected: yes" in detail
+        devices.append({**d, "connected": is_connected, "paired": "Paired: yes" in detail})
+        if is_connected:
+            connected = d
+    return {"available": True, "powered": powered, "devices": devices, "connected": connected}
+
+
+@app.post("/bluetooth/scan")
+def bt_scan():
+    _bt("--timeout", "6", "scan", "on", timeout=14)
+    return {"devices": _bt_devices()}
+
+
+def _bt_mac(request_body: dict) -> str:
+    mac = clean_text(request_body.get("mac"), 17)
+    if not re.match(r"^[0-9A-Fa-f:]{17}$", mac):
+        raise HTTPException(400, "mac must look like AA:BB:CC:DD:EE:FF")
+    return mac.upper()
+
+
+@app.post("/bluetooth/connect")
+async def bt_connect(request: Request):
+    mac = _bt_mac(await body(request))
+    out = await asyncio.to_thread(_bt, "connect", mac, timeout=20)
+    if "Connection successful" not in out and "AlreadyConnected" not in out:
+        lines = [line for line in out.splitlines() if line.strip()]
+        raise HTTPException(502, clean_text(lines[-1] if lines else "Could not connect", 120))
+    return {"ok": True, "mac": mac}
+
+
+@app.post("/bluetooth/disconnect")
+async def bt_disconnect(request: Request):
+    mac = _bt_mac(await body(request))
+    await asyncio.to_thread(_bt, "disconnect", mac, timeout=15)
+    return {"ok": True, "mac": mac}
 
 
 # ---------------------------------------------------------------- pages

@@ -16,5 +16,15 @@ $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit 0
 Register-ScheduledTask -TaskName "LockInGuard" -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM" -RunLevel Highest -Force | Out-Null
 Start-ScheduledTask -TaskName "LockInGuard"
+
+# The same UI as the box, in your desktop session. A SYSTEM task can't open a window, so this
+# one runs as you at logon: while the box is locked it shows http://<pi>:8000/ full-screen.
+$screenAction  = New-ScheduledTaskAction -Execute $py -Argument "`"$dir\lockin_guard.py`" screen"
+$screenTrigger = New-ScheduledTaskTrigger -AtLogOn
+$screenSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit 0
+Register-ScheduledTask -TaskName "LockInScreen" -Action $screenAction -Trigger $screenTrigger -Settings $screenSettings -User "$env:USERDOMAIN\$env:USERNAME" -RunLevel Limited -Force | Out-Null
+Start-ScheduledTask -TaskName "LockInScreen"
+
 Write-Host "Installed. The laptop now follows the box at $PiUrl"
-Write-Host "Uninstall: Unregister-ScheduledTask LockInGuard; python `"$dir\lockin_guard.py`" clear"
+Write-Host "While locked, Chrome/Edge shows the box's own screen full-screen."
+Write-Host "Uninstall: Unregister-ScheduledTask LockInGuard, LockInScreen; python `"$dir\lockin_guard.py`" clear"
