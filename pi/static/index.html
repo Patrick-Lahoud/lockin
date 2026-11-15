@@ -287,45 +287,46 @@
   .weather-details b { color: var(--ink); font-weight: 600; }
   .weather-msg { font-size: 14px; color: var(--gray); text-align: center; padding: 24px 0; }
 
-  /* ---------- music ---------- */
+  /* ---------- music: boxes ---------- */
   .music-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  .music-head { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 4px 8px; }
+  .music-head { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 4px 10px; }
   .music-head h2 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
   .music-head span { font-size: 12px; color: var(--gray); }
-  .track-list {
-    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px;
-    overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none;
-    touch-action: pan-y;
+  .track-grid {
+    flex: 1; min-height: 0; display: grid; gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 96px; align-content: center;
+    overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+    scrollbar-width: none; touch-action: pan-y;
   }
-  .track-list::-webkit-scrollbar { display: none; }
-  .track-row {
-    display: flex; align-items: center; gap: 12px; width: 100%;
-    height: 42px; flex: none; padding: 0 12px; cursor: pointer;
-    border-radius: 12px; border: 1px solid transparent; background: transparent;
-    color: var(--ink); font: inherit; font-size: 14px; text-align: left;
-    transition: background .16s ease, transform .15s ease;
+  .track-grid::-webkit-scrollbar { display: none; }
+  .tile {
+    position: relative; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 13px 15px; min-width: 0; cursor: pointer; text-align: left;
+    border-radius: 18px; background: var(--surface);
+    border: 1px solid var(--hair); border-top-color: var(--specular);
+    color: var(--ink); font: inherit;
+    transition: transform .15s ease, background .18s ease, border-color .18s ease;
   }
-  .track-row:active { transform: scale(.995); }
-  .track-row.playing { background: var(--surface); border-color: var(--hair); }
-  .track-name { flex: 1; font-weight: 500; }
-  .track-kind { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: .06em; }
-  .bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; width: 14px; }
-  .bars i { width: 2px; background: var(--blue); border-radius: 1px; animation: eq .9s ease-in-out infinite; }
-  .bars i:nth-child(1) { height: 60%; animation-delay: -.2s; }
-  .bars i:nth-child(2) { height: 100%; animation-delay: -.5s; }
-  .bars i:nth-child(3) { height: 40%; animation-delay: -.8s; }
-  @keyframes eq { 50% { transform: scaleY(.35); } }
-  .dots { width: 14px; display: flex; justify-content: center; color: var(--gray-dim); font-size: 16px; }
-
-  .transport { display: flex; align-items: center; justify-content: center; gap: 18px; padding-top: 10px; flex: none; }
-  .tbtn {
-    width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
-    background: var(--surface); color: var(--ink); display: grid; place-items: center;
-    transition: transform .15s ease;
+  .tile:active { transform: scale(.985); }
+  .tile.playing { background: rgba(10, 132, 255, .13); border-color: rgba(10, 132, 255, .5); }
+  body.light .tile.playing { background: rgba(0, 122, 255, .1); }
+  .tile.selected { background: var(--surface-2); border-color: rgba(255, 255, 255, .18); }
+  body.light .tile.selected { border-color: rgba(0, 0, 0, .14); }
+  .tile .t {
+    font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
   }
-  .tbtn:active { transform: scale(.9); }
-  #play { width: 52px; height: 52px; background: var(--ink); color: var(--canvas); }
-  .audio-note { font-size: 11px; color: var(--gray); text-align: center; padding-top: 6px; flex: none; }
+  .tile .k { font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--gray); }
+  .tile.playing .k { color: var(--blue); }
+  .viz { position: absolute; right: 15px; bottom: 12px; display: flex; align-items: flex-end; gap: 3px; height: 16px; }
+  .viz i { width: 3px; height: 100%; border-radius: 2px; background: var(--blue); transform-origin: bottom; animation: eq .95s ease-in-out infinite; }
+  .viz i:nth-child(2) { height: 65%; animation-delay: -.35s; }
+  .viz i:nth-child(3) { height: 85%; animation-delay: -.6s; }
+  .viz i:nth-child(4) { height: 50%; animation-delay: -.15s; }
+  @keyframes eq { 50% { transform: scaleY(.28); } }
+  .viz.muted i { background: var(--gray-dim); animation: none; height: 26%; }
+  .audio-note { font-size: 11px; color: var(--gray); text-align: center; padding-top: 10px; flex: none; }
 
   /* ---------- per-icon popovers ---------- */
   .icon-wrap { position: relative; }
@@ -368,9 +369,9 @@
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-  @media (prefers-reduced-motion: reduce) {
+    @media (prefers-reduced-motion: reduce) {
     #track, .popover, .toast { transition: none; animation: none; }
-    .bars i { animation: none; }
+    .viz i { animation: none; }
   }
 </style>
 </head>
@@ -464,18 +465,9 @@
             <div class="music-wrap">
               <div class="music-head">
                 <h2>Music</h2>
-                <span id="nowPlaying">Nothing playing</span>
+                <span id="nowPlaying">Silence</span>
               </div>
-              <div class="track-list" id="trackList"></div>
-              <div class="transport">
-                <button class="tbtn" id="prev" type="button" aria-label="Previous">
-                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-                </button>
-                <button class="tbtn" id="play" type="button" aria-label="Play"></button>
-                <button class="tbtn" id="next" type="button" aria-label="Next">
-                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                </button>
-              </div>
+              <div class="track-grid" id="trackGrid"></div>
               <div class="audio-note" id="audioNote"></div>
             </div>
           </section>
@@ -502,10 +494,11 @@
 
 <script>
   const DURATIONS = [1, 15, 30, 45, 60];
+  const SILENCE = { title: "Silence", kind: "silence", label: "Off" };
   const SYNTH = [
-    { title: "White Noise", kind: "synth", synth: "white", label: "Noise" },
-    { title: "Brown Noise", kind: "synth", synth: "brown", label: "Noise" },
-    { title: "Pink Noise", kind: "synth", synth: "pink", label: "Noise" },
+    { title: "White Noise", kind: "synth", synth: "white", label: "Generated" },
+    { title: "Brown Noise", kind: "synth", synth: "brown", label: "Generated" },
+    { title: "Pink Noise", kind: "synth", synth: "pink", label: "Generated" },
   ];
   const FACE = { happy: "Happy", focused: "Focused", worried: "Needs you", sad: "Struggling", proud: "Done" };
 
@@ -527,7 +520,7 @@
     theme: "dark",
     playing: false,
     track: 0,
-    tracks: [...SYNTH],
+    tracks: [SILENCE, ...SYNTH],
     audioError: null,
     linked: false,
     online: navigator.onLine,
@@ -550,10 +543,9 @@
   const todoList = $("todoList");
   const todoCount = $("todoCount");
   const weatherWrap = $("weatherWrap");
-  const trackList = $("trackList");
+  const trackGrid = $("trackGrid");
   const nowPlaying = $("nowPlaying");
   const audioNote = $("audioNote");
-  const playBtn = $("play");
   const btList = $("btList");
   const btStatusText = $("btStatusText");
   const wifiState = $("wifiState");
@@ -575,8 +567,6 @@
   let weatherKey = "";
 
   const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-  const PLAY_SVG = '<svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-  const PAUSE_SVG = '<svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
 
   const pad = (n) => String(n).padStart(2, "0");
   const nowS = () => Date.now() / 1000 + skew;
@@ -987,6 +977,13 @@
 
     if (!t) return;
 
+    if (t.kind === "silence") {
+      state.track = index;
+      state.playing = false;
+      renderMusic();
+      return;
+    }
+
     if (t.kind === "synth") {
       if (autoplay) { audio.noise(t.synth); state.playing = true; }
     } else {
@@ -1002,40 +999,37 @@
     renderMusic();
   }
 
-  function togglePlay() {
-    if (state.playing) {
-      stopPlayback();
-      state.playing = false;
-      renderMusic();
-      return;
-    }
-    playTrack(state.track, true);
-  }
-
   function renderMusic(force = false) {
     const key = JSON.stringify([state.tracks, state.track, state.playing, state.audioError]);
     if (!force && key === musicKey) return;
     musicKey = key;
 
     const t = state.tracks[state.track];
-    nowPlaying.textContent = state.playing && t ? t.title : "Nothing playing";
-    playBtn.innerHTML = state.playing ? PAUSE_SVG : PLAY_SVG;
+    const live = !!(t && t.kind !== "silence" && state.playing);
+    nowPlaying.textContent = !t || t.kind === "silence" ? "Silence" : live ? t.title : "Nothing playing";
 
-    trackList.innerHTML = state.tracks.map((item, i) => `
-      <button type="button" class="track-row${i === state.track && state.playing ? " playing" : ""}" data-track="${i}">
-        <span class="track-name">${esc(item.title)}</span>
-        <span class="track-kind">${esc(item.label)}</span>
-        ${i === state.track && state.playing ? '<span class="bars"><i></i><i></i><i></i></span>' : '<span class="dots">•</span>'}
-      </button>`).join("");
+    trackGrid.innerHTML = state.tracks.map((item, i) => {
+      const active = i === state.track;
+      const cls = active ? (live ? " playing" : " selected") : "";
+      const viz = !active ? "" : item.kind === "silence"
+        ? '<span class="viz muted"><i></i><i></i><i></i><i></i></span>'
+        : '<span class="viz"><i></i><i></i><i></i><i></i></span>';
+      return `<button type="button" class="tile${cls}" data-track="${i}">
+        <span class="t">${esc(item.title)}</span>
+        <span class="k">${esc(item.label)}</span>
+        ${viz}
+      </button>`;
+    }).join("");
 
     audioNote.textContent = state.audioError
-      || (t && t.kind === "synth" ? "Generated live on the Pi — no audio files needed" : "");
+      || (t && t.kind === "synth" ? "Generated live on the Pi — no audio files needed" : t && t.kind === "silence" ? "Nothing playing" : "");
   }
 
   async function loadMusic() {
     let files = [];
     try { files = await api("/music"); } catch (e) { files = []; }
     state.tracks = [
+      SILENCE,
       ...SYNTH,
       ...files.map((f) => ({ title: f.title, kind: "file", url: f.url, label: "On the Pi" })),
     ];
@@ -1185,17 +1179,16 @@
     if (e.key === "Escape") closeSheet();
   });
 
-  trackList.addEventListener("click", (e) => {
-    const row = e.target.closest("[data-track]");
-    if (!row) return;
-    const i = Number(row.dataset.track);
-    if (i === state.track && state.playing) togglePlay();
-    else playTrack(i, true);
+  trackGrid.addEventListener("click", (e) => {
+    const tile = e.target.closest("[data-track]");
+    if (!tile) return;
+    const i = Number(tile.dataset.track);
+    const item = state.tracks[i];
+    if (!item) return;
+    if (item.kind === "silence") return playTrack(i);      // back to silence
+    if (i === state.track && state.playing) return playTrack(0);  // tapping the playing box stops it
+    playTrack(i, true);
   });
-
-  $("prev").addEventListener("click", () => playTrack((state.track - 1 + state.tracks.length) % state.tracks.length, state.playing));
-  $("next").addEventListener("click", () => playTrack((state.track + 1) % state.tracks.length, state.playing));
-  playBtn.addEventListener("click", togglePlay);
 
   player.addEventListener("error", () => {
     const t = state.tracks[state.track];
