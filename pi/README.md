@@ -1,5 +1,18 @@
 # B: Pi server + box screen
 
+## ⚡ FASTEST SETUP (demo day): the laptop is the brain, the Pi only shows the screen
+The Pi doesn't run the server at all. The laptop runs it; the Pi runs a browser + a 60-line servo script.
+```bash
+# on the LAPTOP (Mac):
+cd lock-in/pi && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python server.py
+# on the PI (use the laptop's IP; on the Mac: System Settings → Wi-Fi → Details, or `ipconfig getifaddr en0`):
+cd ~/lock-in && git pull && cd pi && chmod +x start_pi.sh && ./start_pi.sh <LAPTOP-IP>
+```
+Everything else (laptop blocker, agent) points at `http://127.0.0.1:8000` on the laptop.
+The Android phone's MacroDroid URL becomes `http://<LAPTOP-IP>:8000/inbox`.
+
+---
+
 The server is the boss. It owns the state, runs the timer, moves the servo, and serves three pages:
 
 | URL | Who sees it |
